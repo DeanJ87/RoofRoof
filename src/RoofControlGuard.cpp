@@ -88,6 +88,15 @@ namespace SQM
         return true;
     }
 
+    bool RoofControl::takeOverrideAlert(std::string &text)
+    {
+        if (!overrideAlertWanted.exchange(false) || lock == nullptr)
+            return false;
+        RoofLocked held(lock);
+        text = overrideText;
+        return true;
+    }
+
     void RoofControl::refreshSnapshot()
     {
         RoofIo::Snapshot s;
@@ -119,7 +128,7 @@ namespace SQM
         s.simulation = Bench::SIMULATION;
         // Spec 027: the wait for the park and the overrides.
         s.parkWait = RoofIo::waitView(guard.wait(), millis());
-        s.overrideBits = static_cast<uint8_t>(guard.openOverride() | (guard.closeParkOverride() ? RoofIo::OverridePark : 0));
+        s.overrideBits = guard.inEffect(); // spec 039: an open's park override too
         s.openOverridable = RoofIo::overridableNow(Roof::Command::Open, currentGates());
         const bool changed = s.status.state != snap.status.state || s.status.fault.kind != snap.status.fault.kind ||
                              s.closePending != snap.closePending || s.calibrating != snap.calibrating ||

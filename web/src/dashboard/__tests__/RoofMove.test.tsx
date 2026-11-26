@@ -50,11 +50,25 @@ describe('the move dialog', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('says N.I.N.A. is asked to park first; the park is never overridden', () => {
-    show({ daylight, parkConfirmed: false, openOverridable: ['daylight'] });
+  it('spec 039: an Open past the park warns that the roof passes over the telescope, and names the park', async () => {
+    const sent = record();
+    show({ daylight, parkConfirmed: false, openOverridable: ['mountNotParked', 'daylight'] });
     fireEvent.click(button('Open'));
     expect(within(dialog()).getByRole('heading', { name: '2 reasons Open is blocked' })).toBeInTheDocument();
-    expect(dialog()).toHaveTextContent("N.I.N.A. is asked to park first; the roof opens once it's parked.");
+    expect(dialog()).toHaveTextContent('Mount not confirmed parked: the roof passes over the telescope. Check the camera first.');
+    expect(dialog()).toHaveTextContent('Open anyway sets these checks aside for this opening. Look at the telescope first.');
+    // More than the park in the way: nothing to wait for, so nothing is sent until the person chooses.
+    expect(within(dialog()).queryByRole('button', { name: 'Wait for the park' })).toBeNull();
+    expect(sent).toEqual([]);
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Open anyway' }));
+    await waitFor(() => expect(sent).toEqual([{ command: 'open', body: '{"override":["mountNotParked","daylight"]}' }]));
+  });
+
+  it('no Open anyway when the device does not offer the park', () => {
+    show({ daylight, parkConfirmed: false, openOverridable: ['daylight'] });
+    fireEvent.click(button('Open'));
+    expect(within(dialog()).queryByRole('button', { name: 'Open anyway' })).toBeNull();
+    expect(dialog()).toHaveTextContent("These checks can't be set aside");
   });
 
   it('offers no override for rain, only Cancel; the Stop bar is inside the dialog', () => {
@@ -68,12 +82,30 @@ describe('the move dialog', () => {
     expect(sent).toEqual([]);
   });
 
-  it('an Open only the park blocks just goes: the device waits for the park', async () => {
+  it('an Open only the park blocks goes at once (the device waits for the park), warns, and can open anyway', async () => {
     const sent = record();
-    show({ parkConfirmed: false });
+    show({ parkConfirmed: false, openOverridable: ['mountNotParked'] });
     fireEvent.click(button('Open'));
-    expect(screen.queryByRole('dialog')).toBeNull();
     await waitFor(() => expect(sent).toEqual([{ command: 'open', body: '' }]));
+    expect(dialog()).toHaveTextContent('Mount not confirmed parked: the roof passes over the telescope.');
+    expect(within(dialog()).getByRole('button', { name: 'Wait for the park' })).toBeInTheDocument();
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Open anyway' }));
+    await waitFor(() => expect(sent[1]).toEqual({ command: 'open', body: '{"override":["mountNotParked"]}' }));
+  });
+
+  it('Cancel after an Open that went stops its wait; Wait for the park leaves it waiting', async () => {
+    const sent = record();
+    const { unmount } = show({ parkConfirmed: false, openOverridable: ['mountNotParked'] });
+    fireEvent.click(button('Open'));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(sent.map((s) => s.command)).toEqual(['open', 'stop']));
+    unmount();
+    sent.length = 0;
+    show({ parkConfirmed: false, openOverridable: ['mountNotParked'] });
+    fireEvent.click(button('Open'));
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Wait for the park' }));
+    await waitFor(() => expect(sent).toEqual([{ command: 'open', body: '' }]));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('a Close with the park not confirmed goes at once, warns, and can close anyway', async () => {

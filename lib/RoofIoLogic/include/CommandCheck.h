@@ -39,7 +39,8 @@ namespace SQM
             // which ends the run first (RoofControl::automaticClose).
             bool calibrating = false;
             // Spec 027: what a person confirmed past (RoofIo::OverrideBit). Only
-            // a person's count: Open takes weather and daylight, Close the park.
+            // a person's count: Open takes weather, daylight and (spec 039) the
+            // park, Close the park.
             uint8_t overrides = 0;
             // Spec 027: the park set aside whoever asks (MoveGuard's "refused
             // only for the park" dry run; never used to run a command).
@@ -47,7 +48,8 @@ namespace SQM
         };
 
         // Spec 027: the overrides `origin` may use for `command` (0 for clients
-        // and MQTT; spec 030: the automatic close's Close only OverrideNinaLost).
+        // and MQTT; spec 030: the automatic close's Close only OverrideNinaLost;
+        // spec 039: a person's Open the park, weather and daylight).
         uint8_t allowedOverrides(Roof::Command command, Roof::Origin origin, uint8_t requested);
 
         constexpr const char *CALIBRATING_REASON = "calibrating";

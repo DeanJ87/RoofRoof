@@ -225,8 +225,9 @@ namespace SQM
         const RoofIo::GateInputs now = currentGates();
         stepGuard(now); // spec 027: the wait for the park, the overrides in effect
         // Constitution II: a close (spec 027: or an open) stops as a motion
-        // fault when the park is lost; not a person's confirmed close.
-        if (RoofIo::interlockLost(status, now, guard.closeParkOverride(), guard.closeNinaLost())) // spec 030: N.I.N.A. lost
+        // fault when the park is lost; not a person's confirmed close or open.
+        // Spec 030: N.I.N.A. lost; spec 039: a person's confirmed open past the park.
+        if (RoofIo::interlockLost(status, now, guard.closeParkOverride(), guard.closeNinaLost(), guard.openParkOverride()))
         {
             latchExternal(RoofIo::externalRecord(RoofIo::FaultCause::ParkInterlock, static_cast<float>(RoofIo::interlockBits(now)), 0.0f));
             return;

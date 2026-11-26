@@ -131,7 +131,7 @@ void test_open_override_takes_only_present_reasons_and_ends(void)
     MoveGuard guard = guardWith(true, true);
     GateInputs day = parked(true);
     day.daylightCloses = true;
-    guard.ran(Roof::Command::Open, OverrideDaylight | OverrideWeather, day);
+    guard.ran(Roof::Command::Open, Roof::Origin::Person, OverrideDaylight | OverrideWeather, day);
     TEST_ASSERT_EQUAL_UINT8(OverrideDaylight, guard.openOverride());
     guard.step(inState(Roof::State::Opening), false, day, OK, 0);
     TEST_ASSERT_EQUAL_UINT8(OverrideDaylight, guard.openOverride());
@@ -141,25 +141,25 @@ void test_open_override_takes_only_present_reasons_and_ends(void)
     guard.step(inState(Roof::State::Open), false, rain, OK, 0);
     TEST_ASSERT_EQUAL_UINT8(0, guard.openOverride());
 
-    guard.ran(Roof::Command::Open, OverrideDaylight, day);
+    guard.ran(Roof::Command::Open, Roof::Origin::Person, OverrideDaylight, day);
     guard.step(inState(Roof::State::Closed), false, day, OK, 0);
     TEST_ASSERT_EQUAL_UINT8(0, guard.openOverride());
 
-    guard.ran(Roof::Command::Open, OverrideDaylight, day);
-    guard.ran(Roof::Command::Close, 0, day);
+    guard.ran(Roof::Command::Open, Roof::Origin::Person, OverrideDaylight, day);
+    guard.ran(Roof::Command::Close, Roof::Origin::Person, 0, day);
     TEST_ASSERT_EQUAL_UINT8(0, guard.openOverride());
 }
 
 void test_close_park_override_lasts_for_that_close(void)
 {
     MoveGuard guard = guardWith(true, true);
-    guard.ran(Roof::Command::Close, OverridePark, parked(false));
+    guard.ran(Roof::Command::Close, Roof::Origin::Person, OverridePark, parked(false));
     TEST_ASSERT_TRUE(guard.closeParkOverride());
     guard.step(inState(Roof::State::Closing), false, parked(false), OK, 0);
     TEST_ASSERT_TRUE(guard.closeParkOverride());
     guard.step(inState(Roof::State::Closed), false, parked(false), OK, 0);
     TEST_ASSERT_FALSE(guard.closeParkOverride());
-    guard.ran(Roof::Command::Close, 0, parked(false));
+    guard.ran(Roof::Command::Close, Roof::Origin::Person, 0, parked(false));
     TEST_ASSERT_FALSE(guard.closeParkOverride());
 }
 

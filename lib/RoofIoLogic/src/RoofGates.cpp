@@ -56,7 +56,9 @@ namespace SQM
                 return parkHolds(in) ? 0 : OverridePark;
             if (command != Roof::Command::Open)
                 return 0;
-            return static_cast<uint8_t>((weatherOverridable(in) ? OverrideWeather : 0) | (in.daylightCloses ? OverrideDaylight : 0));
+            return static_cast<uint8_t>(
+                (weatherOverridable(in) ? OverrideWeather : 0) | (in.daylightCloses ? OverrideDaylight : 0) |
+                (parkHolds(in) ? 0 : OverridePark));
         }
 
         uint8_t overrideStillApplies(uint8_t active, const GateInputs &in)
@@ -121,12 +123,16 @@ namespace SQM
             return (in.parked || in.ninaGrace) && readingFresh(in) && switchesClosed(in.fittedSwitches, in.switch1, in.switch2);
         }
 
-        bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden, bool ninaLost)
+        bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden, bool ninaLost, bool openParkOverridden)
         {
             // Spec 016: any calibration leg too. Until the person confirms the open
             // end, a leg may drive the roof the other way (a motor wired backwards).
             // Spec 027: an open too (the roof passes over the telescope either way).
             if (parkOverridden && status.state == Roof::State::Closing)
+                return false;
+            // Spec 039 (constitution 10.0.0, II): a person's confirmed open past
+            // the park; every other stop (weather, faults, Stop) still applies.
+            if (openParkOverridden && status.state == Roof::State::Opening && !status.calibrating && !status.jogging)
                 return false;
             // Spec 033 (constitution 9.0.0, II): a person at the roof jogging it
             // toward closed watches the telescope themselves.

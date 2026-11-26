@@ -1,6 +1,38 @@
 <!--
 Sync Impact Report
-- Version: 9.0.0 -> 9.1.0 (MINOR: Principle I is tightened. An end magnet counts only where the
+- Version: 9.1.0 -> 10.0.0 (MAJOR: Principle II lets a person open past the park, which relaxes it;
+  a new section states who may set a safety check aside.)
+- Added: "Who May Set a Check Aside" (before Principle I). The owner is the source of truth. A
+  person, authenticated at the web UI, who can look at the roof or its camera, may be given a way
+  past a safety check or fault, always with a warning that says what could happen and a deliberate
+  confirmation, for that one move. An automation (an Alpaca client such as N.I.N.A., MQTT and Home
+  Assistant, the controller's own automatic moves) never gets past a safety check, whatever it
+  sends; the only automatic exceptions are the owner-decided ones Principles I-III name (the
+  automatic close from an unknown position and its blind close, the close when N.I.N.A. is lost,
+  the Hall rail fault clearing itself at rest, `autoClose.remoteStop`, the test box's bypasses),
+  each off or bounded as it states. The checks a person can't yet get past are listed in spec 039
+  as follow-ups; giving a person one more relaxes Principles I-III and takes a MAJOR amendment.
+- Modified: II. Close Only Onto a Parked Mount. New: **a person's confirmed open** past the park,
+  as for a confirmed close: warned that the roof passes over the telescope, a person may open once
+  without the park check, at its start and during it (the park interlock doesn't stop that open;
+  the weather, daylight, faults and Stop still do). It is logged and raises an information alert;
+  the next open checks again. "No path skips the check" gains it. Alpaca, MQTT, Home Assistant and
+  the automatic close never can.
+- New risk (II): a person who confirms "Open anyway" with the mount not parked drives the roof
+  over the telescope; if it isn't parked (the camera misread, or it moves during the open), the
+  roof can hit it, and nothing stops that open for the park. Before, an open always needed the
+  park confirmed and stopped when it was lost. Mitigations: only a person with the password, only
+  from a dialog that says in red that the roof passes over the telescope and to check the camera,
+  only for that one open, never from Alpaca, MQTT, Home Assistant or the automatic close (the
+  override bits are filtered by origin where they are set and where they are kept); the device
+  first asks N.I.N.A. to park when only the park blocks; a log line and an alert record it.
+- Modified: III. Unsafe Ends Closed. A person's confirmed open now names the park among what may
+  be overridden; rain and doubt about the weather source still can't be.
+- Why: owner decision (spec 039): a person who can see the camera knows when the mount is parked
+  and N.I.N.A. doesn't say so, and a roof that only N.I.N.A.'s word can open locks them out.
+- Templates: no change. Docs: docs/user-guide/close-on-unsafe.md, docs/user-guide/dashboard.md,
+  docs/user-guide/alerts.md, docs/api/rest.md, specs/039-person-overrides-park/spec.md.
+- Earlier: 9.0.0 -> 9.1.0 (MINOR: Principle I is tightened. An end magnet counts only where the
   position estimate makes it plausible, a move that overruns its expected time without its magnet
   stops, and driving with no sign of movement stops. Nothing is relaxed.)
 - Modified: I. Motion Safety. "Stop on its target magnet" now means a plausible reading: for a move
@@ -329,6 +361,26 @@ of guessing.
 
 ## Core Principles
 
+### Who May Set a Check Aside (10.0.0)
+
+The owner is the source of truth. A safety check exists to stop the roof doing harm when nobody is
+looking; a person who is looking can judge what a check can't (the camera shows the mount parked
+while N.I.N.A. says it isn't).
+
+- A **person** (authenticated at the web UI, or with the REST password) may be given a way past a
+  safety check or a fault, for that one move: always with a warning that says what could happen
+  and a deliberate confirmation, logged, and shown while in effect. Principles I-III name each one.
+- An **automation** MUST NEVER get past a safety check, whatever it sends: an Alpaca client
+  (N.I.N.A.), MQTT and Home Assistant, and the controller's own automatic moves. The only automatic
+  exceptions are the owner-decided ones Principles I-III state, each off by default or bounded as
+  it says: the automatic close from an unknown position and its blind close (I), the close when
+  N.I.N.A. is lost (II), the Hall rail fault clearing itself at rest (I), a remote stop counting as a
+  person's (`autoClose.remoteStop`, III) and the test box's bypasses (II, III).
+- The override bits are filtered by origin where a command is checked and where an override is
+  kept, and a native test proves no automation's command carries one.
+- A check a person can't yet get past is a gap, listed with the spec that found it (spec 039).
+  Closing one relaxes Principles I-III and takes a MAJOR amendment that states the risk.
+
 ### I. Motion Safety
 
 The motor moves only when the firmware knows where the roof is, why it is moving, and that
@@ -456,10 +508,18 @@ Closing onto an unparked telescope is the most expensive failure this device can
   `OpenShutter` and `CloseShutter`, the web UI, MQTT, Home Assistant or the automatic close. A request
   refused only for the park waits for it when N.I.N.A. can be asked (Principle III's steps 2 and 3,
   with their time limit and critical alert) and moves only once the park is confirmed; otherwise it
-  is refused saying why. No path skips the check, except a person's confirmed close (below).
+  is refused saying why. No path skips the check, except a person's confirmed close and confirmed
+  open (below).
 - **A person's confirmed close.** A person (authenticated), warned that the mount is not confirmed
   parked and the roof could hit the telescope, may confirm one close without the park check, at its
   start and during it. Alpaca, MQTT, Home Assistant and the automatic close never can.
+- **A person's confirmed open** (owner decision, 10.0.0). A person (authenticated), warned that
+  the mount is not confirmed parked and the roof passes over the telescope (check the camera), may
+  confirm one open without the park check, at its start and during it: the park interlock doesn't
+  stop that open, while the weather, daylight, every fault and Stop still do. It is logged and
+  raises an information alert. Alpaca, MQTT, Home Assistant and the automatic close never can.
+  Risk: an open onto a mount that isn't parked can hit the telescope, and nothing stops it for the
+  park.
 - **A person's jog toward closed** (owner decision, 9.0.0). A person at the roof, holding a jog
   toward closed (Principle I's hold to run, slow duty, the jog's limit), needs no confirmed park,
   at its start or during it, and is warned "Mount not confirmed parked: watch the telescope": they
@@ -467,7 +527,8 @@ Closing onto an unparked telescope is the most expensive failure this device can
   Alpaca, MQTT, Home Assistant and the automatic close never can. Risk: with the motor direction
   setting wrong, "toward closed" drives the roof open over an unparked telescope until the person
   lets go.
-- The park interlock is re-checked throughout an open and a close. A mount that reports unparked, or a fitted
+- The park interlock is re-checked throughout an open and a close (not a person's confirmed close
+  or open). A mount that reports unparked, or a fitted
   park switch that opens or can't be read, stops the motor as a motion fault. The re-check uses each
   source's latest good reading while it is fresh: a failed N.I.N.A. read is not a report of
   unparked, but it never extends a reading's freshness, and evidence past its freshness stops the
@@ -514,9 +575,9 @@ Doubt about the weather MUST resolve to "unsafe".
   alert. The alert path MUST NOT depend on the device that failed where another path exists.
 - The roof MUST NOT open by itself. Opening is always a person's or a client's command, and it is
   refused while the verdict is unsafe, except a person's confirmed open.
-- **A person's confirmed open.** A person (authenticated) may open past daylight and past the
-  weather source's own report of unsafe for anything but rain, naming each reason after they are
-  listed. Rain, a failed rain sensor and any doubt about a source (missing, stale, unreachable,
+- **A person's confirmed open.** A person (authenticated) may open past daylight, past the
+  weather source's own report of unsafe for anything but rain, and (10.0.0, Principle II) past the
+  park, naming each reason after they are listed. Rain, a failed rain sensor and any doubt about a source (missing, stale, unreachable,
   unreadable, offline) can't be overridden. The override lasts until the roof reads closed, a close
   is accepted, the overridden reasons clear, or a reason not overridden appears; meanwhile those
   reasons neither stop the open nor start the automatic close, and everything else does. It is shown
@@ -723,4 +784,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 9.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-25
+**Version**: 10.0.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26

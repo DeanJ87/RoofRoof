@@ -33,6 +33,9 @@ namespace SQM
         // Spec 027: an Open or Close that waited for the park and gave up
         // (RoofIo::ParkWait): "mount not parked", with its text.
         Alerts::Alert parkWaitAlert(const std::string &why);
+        // Spec 039: a person's Open or Close set the park check aside
+        // (RoofIo::parkOverrideText): an information alert at the normal level.
+        Alerts::Alert parkOverrideAlert(const std::string &text);
 
         // The sequence is attempting a close: waiting for the park, closing,
         // or waiting to try again (not when it can't move or is stood down).

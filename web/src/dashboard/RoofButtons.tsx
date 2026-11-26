@@ -87,8 +87,9 @@ const Why: FunctionalComponent<{
   );
 };
 
-// Spec 027: the move dialog's state. A Close blocked only by the park is sent at once (the device asks
+// Spec 027: the move dialog's state. A move blocked only by the park is sent at once (the device asks
 // N.I.N.A. to park and waits when it can) unless the person asked to confirm first; Cancel then stops it.
+// Spec 039: an Open too, which the dialog may then send again past the park ("Open anyway").
 const useMoveDialog = (view: RoofView, send: Send, confirm: boolean, ctx: BlockerContext) => {
   const [shown, setShown] = useState<{ action: 'open' | 'close'; sent: boolean } | null>(null);
   // Live: the reasons follow the roof, and the dialog goes once nothing blocks the move.
@@ -96,8 +97,8 @@ const useMoveDialog = (view: RoofView, send: Send, confirm: boolean, ctx: Blocke
   const press = (action: 'open' | 'close'): boolean => {
     const next = view[action].blocked && view.roof ? movePlan(view.roof, action, ctx) : null;
     if (!next) return false;
-    const sent = action === 'close' && next.override !== null && !confirm;
-    if (sent) send('close');
+    const sent = next.parkOnly && next.override !== null && !confirm;
+    if (sent) send(action);
     setShown({ action, sent });
     return true;
   };
@@ -109,7 +110,7 @@ const useMoveDialog = (view: RoofView, send: Send, confirm: boolean, ctx: Blocke
     <MoveDialog
       plan={plan}
       onAnyway={() => done(plan.action, plan.override ?? undefined)}
-      onWait={() => done(shown.sent ? undefined : 'close')}
+      onWait={() => done(shown.sent ? undefined : plan.action)}
       onCancel={() => done(shown.sent ? 'stop' : undefined)}
     />
   );

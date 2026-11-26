@@ -75,9 +75,10 @@ namespace SQM
         };
 
         // Spec 027: what a person may confirm past (bits of a command's
-        // overrides). Park: one Close only. Weather: an Open while the weather
-        // source itself reports unsafe for anything but rain (no doubt about
-        // the source). Daylight: an Open.
+        // overrides). Park: one Close, or (spec 039, constitution 10.0.0) one
+        // Open. Weather: an Open while the weather source itself reports
+        // unsafe for anything but rain (no doubt about the source). Daylight:
+        // an Open.
         enum OverrideBit : uint8_t
         {
             OverridePark = 1u << 0,
@@ -92,7 +93,8 @@ namespace SQM
         // Only the source's own "unsafe", not rain: a person may override it.
         bool weatherOverridable(const GateInputs &in);
         // The override bits a person may set for `command` now (those whose
-        // refusal applies and can be overridden).
+        // refusal applies and can be overridden). Spec 039: the park for an
+        // Open too.
         uint8_t overridableNow(Roof::Command command, const GateInputs &in);
         // An Open override in effect (OverrideWeather, OverrideDaylight) as it
         // stands now: the bits still covering a refusal, or 0 when it ends
@@ -129,7 +131,14 @@ namespace SQM
         // (spec 027) runs without the park check.
         // Spec 030: `ninaLost`, the automatic close's N.I.N.A.-lost close: only
         // the fitted switches are checked.
-        bool interlockLost(const Roof::Status &status, const GateInputs &in, bool parkOverridden = false, bool ninaLost = false);
+        // Spec 039: `openParkOverridden`, a person's confirmed open past the
+        // park, runs without it too (Opening only; never a calibration leg).
+        bool interlockLost(
+            const Roof::Status &status,
+            const GateInputs &in,
+            bool parkOverridden = false,
+            bool ninaLost = false,
+            bool openParkOverridden = false);
         // Which inputs fail the park now (InterlockBit), 0 when it holds.
         uint32_t interlockBits(const GateInputs &in);
         // An open (or, spec 019, a jog toward open; spec 033: never one toward closed) is under way and the verdict
