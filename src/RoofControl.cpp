@@ -153,7 +153,8 @@ namespace SQM
         context.parkAside = parkAside;
         context.closePending = closePending;
         context.remoteStopsClose = remoteStopsClose.load();
-        context.calibrating = calibration.active(); // spec 016: open and close wait for the run
+        context.calibrating = calibration.active();                                     // spec 016: open and close wait for the run
+        context.closeArmed = {armedNow.load(), armedLeftMs.load(), armedHoldMs.load()}; // spec 052
         return RoofIo::checkCommand(command, origin, currentGates(), controller, context);
     }
 

@@ -61,6 +61,10 @@ namespace SQM
             uint64_t countedMs() const { return countMs; }
             uint64_t leftMs() const;
             bool fired() const { return isFired; }
+            // Spec 052: once fired, the safe spell still needed before it clears
+            // (the whole hold while the last step was unsafe); 0 when not fired.
+            uint64_t clearsInMs() const;
+            uint64_t lengthMs() const { return holdMs; }
 
             static constexpr uint64_t NOT_HOLDING = UINT64_MAX;
 

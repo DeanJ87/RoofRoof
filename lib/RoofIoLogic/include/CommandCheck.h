@@ -5,6 +5,7 @@
 // Alpaca simulator both decide with this, so the command path ConformU
 // exercises is the firmware's (constitution IV).
 
+#include <cstdint>
 #include <string>
 
 #include "RoofController.h"
@@ -26,6 +27,17 @@ namespace SQM
             bool standsDown = false;
         };
 
+        // Spec 052 (finding F39): the automatic close is armed (spec 030's weather
+        // hold has fired and the weather hasn't yet been safe for the hold's
+        // length): an Open now would be closed again at once. `leftMs`: the safe
+        // spell still needed before it stands down; `holdMs`: the hold's length.
+        struct CloseArmed
+        {
+            bool armed = false;
+            uint32_t leftMs = 0;
+            uint32_t holdMs = 0;
+        };
+
         // What else the decision needs from the roof's owner (RoofControl).
         struct CommandContext
         {
@@ -45,6 +57,10 @@ namespace SQM
             // Spec 027: the park set aside whoever asks (MoveGuard's "refused
             // only for the park" dry run; never used to run a command).
             bool parkAside = false;
+            // Spec 052: the automatic close is armed (CloseArmed). A remote Open
+            // is refused (CLOSE_ARMED_REASON) while the weather reads safe; a
+            // person's isn't (finding F39b, left to the owner).
+            CloseArmed closeArmed;
         };
 
         // Spec 027: the overrides `origin` may use for `command` (0 for clients
@@ -53,6 +69,12 @@ namespace SQM
         uint8_t allowedOverrides(Roof::Command command, Roof::Origin origin, uint8_t requested);
 
         constexpr const char *CALIBRATING_REASON = "calibrating";
+        // Spec 052: a remote Open while the automatic close is armed.
+        constexpr const char *CLOSE_ARMED_REASON = "closeArmed";
+        // "The automatic close is still armed after unsafe weather and would close
+        // the roof again at once: an imaging app can't open it until the weather
+        // has been safe for 60 s (42 s left)".
+        std::string closeArmedText(Roof::Origin origin, const CloseArmed &armed);
         // Spec 019: open and close from anyone but the automatic close while a
         // person jogs the roof (the automatic close stops the jog first).
         constexpr const char *JOGGING_REASON = "jogging";
@@ -72,7 +94,9 @@ namespace SQM
         // (constitution II, III); then, for a remote client, no open while the roof
         // is closing, a close waits, or a close was stopped part-way (a client
         // never reverses a close); then the motion logic's dry run (position
-        // unknown, fault, supply...). Spec 027: an Open or Close of a roof
+        // unknown, fault, supply...). Spec 052: a remote Open is also refused
+        // while the automatic close is armed (before the park gate, so it never
+        // waits for a park it couldn't use). Spec 027: an Open or Close of a roof
         // already at that end (nothing moving) is accepted first, whatever the
         // checks say: there is nothing to do.
         CommandCheck checkCommand(

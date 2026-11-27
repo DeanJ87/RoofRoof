@@ -560,6 +560,19 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** `UTCDate` (a date string to parse for no extra evidence); a setting for the
   20 s limit; telling N.I.N.A. to reconnect the mount.
 
+### 052 An accepted open reports opening (base: main after 051)
+
+- **Scope:**
+  - Constitution 12.3.0 (III, IV): findings F58/F39. An imaging app's or MQTT's Open is refused
+    (InvalidOperation, the reason and the seconds left) while the automatic close is armed (the
+    weather hold fired and not yet cleared), instead of accepted and undone within a second; a
+    waiting open ends (Error) if the close arms. An accepted move waiting to start reads Opening or
+    Closing with `Slewing` true (spec 027, unchanged), the truthful state once called off; native
+    tests through the Alpaca router.
+- **Out of scope:** a person's Open while the close is armed (F39b: refuse, or an override that
+  stands the close down, is the owner's choice); ShutterStatus Error after a failed wait lasting
+  until the next command (spec 027).
+
 ## Merge order
 
 ```text

@@ -143,6 +143,14 @@ namespace SQM
             const Safety::CloseHold &hold,
             bool daylightCloses = false,
             const std::string &daylightText = "");
+        // Main loop, spec 052: the automatic close is armed (CloseOnUnsafe::closeArmed);
+        // a remote Open is refused meanwhile (RoofIo::checkCommand).
+        void setCloseArmed(const RoofIo::CloseArmed &armed)
+        {
+            armedLeftMs.store(armed.leftMs);
+            armedHoldMs.store(armed.holdMs);
+            armedNow.store(armed.armed);
+        }
         // Main loop: the park switch readings, for SafetyInputs.
         Safety::SwitchReading parkSwitch(uint8_t index) const;
 
@@ -374,7 +382,10 @@ namespace SQM
         std::atomic<uint8_t> park2Reading{0};
         std::atomic<bool> started{false};
         std::atomic<bool> remoteStopsClose{false}; // spec 014: autoClose.remoteStop
-        std::atomic<uint8_t> stateNow{0};          // Roof::State, as of the last snapshot
+        std::atomic<bool> armedNow{false};         // spec 052: setCloseArmed
+        std::atomic<uint32_t> armedLeftMs{0};
+        std::atomic<uint32_t> armedHoldMs{0};
+        std::atomic<uint8_t> stateNow{0}; // Roof::State, as of the last snapshot
         std::atomic<bool> closeWaitingNow{false};
         std::atomic<bool> parkRequestWanted{false}; // spec 027
         std::atomic<bool> waitAlertWanted{false};

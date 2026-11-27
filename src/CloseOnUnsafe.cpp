@@ -198,6 +198,7 @@ namespace SQM
         in.daylight = daylightView.closes();                              // spec 013
         CloseSeq::applyOverride(in, snap.overrideBits, safety.weather()); // spec 027
         holdWeather(in, snap.overrideBits, safety.weather().reasons);     // spec 030
+        roof.setCloseArmed(closeArmed());                                 // spec 052: a remote Open is refused while armed
         watchNina(in, snap, safety.park());                               // spec 030
         in.releaseHold = releaseWanted.exchange(false);                   // spec 026
         sequence.setParkTimeoutMs(parkTimeoutMs.load());
@@ -273,6 +274,9 @@ namespace SQM
         const uint64_t left = weatherHold.leftMs();
         shown.leftSeconds = left == CloseSeq::WeatherHold::NOT_HOLDING ? -1 : static_cast<int32_t>((left + 999) / 1000);
         shown.fired = weatherHold.fired();
+        armedLeftMs.store(clampMs(weatherHold.clearsInMs())); // spec 052
+        armedHoldMs.store(clampMs(weatherHold.lengthMs()));
+        armedNow.store(weatherHold.fired());
         std::lock_guard<std::mutex> held(daylightLock);
         holdShown = shown;
     }

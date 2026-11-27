@@ -26,6 +26,15 @@ namespace SQM
             return countMs >= holdMs ? 0 : holdMs - countMs;
         }
 
+        uint64_t WeatherHold::clearsInMs() const
+        {
+            if (!isFired)
+                return 0;
+            if (counting)
+                return holdMs;
+            return safeMs >= holdMs ? 0 : holdMs - safeMs;
+        }
+
         bool WeatherHold::update(const Step &step)
         {
             // The time since the last step, capped, counts for this step's

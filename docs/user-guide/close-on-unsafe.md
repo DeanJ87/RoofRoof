@@ -122,6 +122,12 @@ the close's start waits.
   the hold. Once the close is wanted, it stays wanted until then, so a verdict that flaps every 5 s
   reaches the hold in about two minutes, starts one close, and doesn't call it off at each safe
   moment. The roof never reopens by itself: N.I.N.A. opens it.
+- **No open while the close is wanted** (spec 052). Until the clear spell has passed, an Open from
+  an imaging app or MQTT is refused with the seconds left (`The automatic close is still armed after
+  unsafe weather and would close the roof again at once: an imaging app can't open it until the
+  weather has been safe for 60 s (42 s left)`): accepted, the roof would start and the close would
+  send it back within a second. An open waiting for the park ends the same way. A person's Open
+  from the web UI isn't refused for this.
 - **A silent SQMeter.** A weather source turns stale after `safety.staleSeconds` (30 s by default)
   without a good reply, and a stale, unreachable or unreadable source counts as unsafe like any
   other reason. So a SQMeter that goes quiet starts the close after the stale time plus the hold:
