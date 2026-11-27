@@ -76,6 +76,29 @@ namespace SQM
                     return CommandCheck{false, JOGGING_REASON, "A person is jogging the roof: release the button or press Stop first"};
                 return CommandCheck{};
             }
+            // A remote client never reverses a close.
+            CommandCheck reverseRefusal(
+                Roof::Command command, Roof::Origin origin, const Roof::Status &status, const CommandContext &context)
+            {
+                if (!remoteOrigin(origin) || command != Roof::Command::Open || !closeUnderWay(status, context))
+                    return CommandCheck{};
+                return CommandCheck{
+                    false,
+                    "closing",
+                    std::string("The roof is closing or was stopped while closing: ") + remoteName(origin) + " can't reverse a close"};
+            }
+
+            // Spec 052 (finding F39): a remote Open the armed close would undo at
+            // once is refused, not accepted and reversed. With the weather unsafe
+            // the gate says so instead.
+            CommandCheck closeArmedRefusal(
+                Roof::Command command, Roof::Origin origin, const GateInputs &gates, const CommandContext &context)
+            {
+                if (!remoteOrigin(origin) || command != Roof::Command::Open || !context.closeArmed.armed ||
+                    gates.weather != Safety::Verdict::Safe)
+                    return CommandCheck{};
+                return CommandCheck{false, CLOSE_ARMED_REASON, closeArmedText(origin, context.closeArmed)};
+            }
         } // namespace
 
         uint8_t allowedOverrides(Roof::Command command, Roof::Origin origin, uint8_t requested)
@@ -89,6 +112,15 @@ namespace SQM
             if (command == Roof::Command::Open)
                 return static_cast<uint8_t>(requested & (OverrideWeather | OverrideDaylight | OverridePark));
             return command == Roof::Command::Close ? static_cast<uint8_t>(requested & OverridePark) : 0;
+        }
+
+        std::string closeArmedText(Roof::Origin origin, const CloseArmed &armed)
+        {
+            const uint32_t holdS = (armed.holdMs + 999) / 1000;
+            const uint32_t leftS = (armed.leftMs + 999) / 1000;
+            return std::string("The automatic close is still armed after unsafe weather and would close the roof again at once: ") +
+                   remoteName(origin) + " can't open it until the weather has been safe for " + std::to_string(holdS) + " s (" +
+                   std::to_string(leftS) + " s left)";
         }
 
         bool remoteOrigin(Roof::Origin origin)
@@ -116,15 +148,16 @@ namespace SQM
             // an Open must not replace it).
             if (controller.atEnd(command) && !(command == Roof::Command::Open && context.closePending))
                 return CommandCheck{};
+            CommandCheck armed = closeArmedRefusal(command, origin, gates, context);
+            if (!armed.accepted)
+                return armed;
             const uint8_t overrides = allowedOverrides(command, origin, context.overrides) | (context.parkAside ? OverridePark : 0);
             const GateRefusal gate = gateCommand(command, gates, static_cast<uint8_t>(overrides));
             if (gate != GateRefusal::None)
                 return CommandCheck{false, gateRefusalName(gate), describeGate(gate, gates)};
-            if (client && command == Roof::Command::Open && closeUnderWay(status, context))
-                return CommandCheck{
-                    false,
-                    "closing",
-                    std::string("The roof is closing or was stopped while closing: ") + remoteName(origin) + " can't reverse a close"};
+            CommandCheck reverse = reverseRefusal(command, origin, status, context);
+            if (!reverse.accepted)
+                return reverse;
             const Roof::CommandResult result = controller.check(command, origin);
             if (!result.accepted)
                 return CommandCheck{false, Roof::refusalName(result.reason), describeRefusal(result)};

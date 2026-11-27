@@ -37,6 +37,9 @@ namespace DemoRoof
         context.parkAside = parkAside;
         context.remoteStopsClose = remoteStopsClose;
         context.calibrating = calibration.active();
+        // Spec 052 (CloseOnUnsafe::closeArmed): a remote Open is refused while the close is armed.
+        context.closeArmed = {
+            weatherHold.fired(), static_cast<uint32_t>(weatherHold.clearsInMs()), static_cast<uint32_t>(weatherHold.lengthMs())};
         return RoofIo::checkCommand(command, origin, gates, controller, context);
     }
 

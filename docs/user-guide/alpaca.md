@@ -53,7 +53,7 @@ To add the Switch, go to **Equipment → Switch**, pick **RoofRoof** under the A
 
 | Member | What it does |
 |---|---|
-| `OpenShutter` | Opens the roof, through the same checks as the web UI's Open, which include the weather and the mount's park. Returns at once; progress shows in `ShutterStatus`. Already open is success. If only the park refuses it and N.I.N.A. can be asked, it succeeds and the roof waits for the park ([The park wait](#the-park-wait)). Needs a connected client. Refused while the roof is closing, a close is waiting, or a close was stopped part-way: an imaging app can't reverse a close. |
+| `OpenShutter` | Opens the roof, through the same checks as the web UI's Open, which include the weather and the mount's park. Returns at once; progress shows in `ShutterStatus`. Already open is success. If only the park refuses it and N.I.N.A. can be asked, it succeeds and the roof waits for the park ([The park wait](#the-park-wait)). Needs a connected client. Refused while the roof is closing, a close is waiting, or a close was stopped part-way: an imaging app can't reverse a close. Refused while the automatic close is still armed after unsafe weather (the weather hold hasn't cleared): it would close the roof again at once. |
 | `CloseShutter` | Closes the roof, through the same checks as the web UI's Close. Returns at once. Already closed is success. Needs a connected client. A close that has to wait for an upload or an MQTT connect to stop, or for the mount to park, succeeds and shows as closing. |
 | `AbortSlew` | Stops the roof at once, keeping its position estimate (the roof's Stop, not its Abort), connected or not. It can't stop a close while the weather isn't safe (below). |
 | `ShutterStatus` | 0 open, 1 closed, 2 opening, 3 closing, 4 error (below). |
@@ -76,7 +76,10 @@ The device is `Dome` number 0, interface version 3, with the `UniqueID` `roofroo
 | Closing, or a close waiting to start | Closing (3) |
 | An open or close waiting for the mount to park | Opening (2) or Closing (3), with `Slewing` true |
 | A park wait that failed (it ran out of time or another check refused the command), until the next command | Error (4) |
+| A park wait called off by a stop or by the automatic close | Where the roof is: Closed (1) for a waiting open, Open (0) for a waiting close |
 | Stopped part-way, position unknown, a fault latched, or the roof controller not running | Error (4) |
+
+An accepted `OpenShutter` or `CloseShutter` reads Opening or Closing from the moment it returns, also while it waits to start, as ASCOM asks of an asynchronous operation: N.I.N.A.'s **Open dome shutter** reads `ShutterStatus` once about a second after the call and fails if it still reads closed. `Slewing` is true meanwhile (ASCOM: a move has been asked for and hasn't finished). If the move then doesn't happen, `ShutterStatus` says so at once: where the roof is, or Error after a failed wait, so a waiting N.I.N.A. stops honestly instead of timing out. An open RoofRoof won't carry out is refused at the call with the reason (below), never accepted and dropped (spec 052).
 
 Only the closed magnet reads as closed, and only the open magnet as open: an app waiting for "open" never starts slewing the mount under a part-open roof. A roof stopped part-way reads as error; an app that wants it closed can still close it. `ShutterStatus` Open (0) is therefore the Dome's own form of "the telescope may move" while the roof is open.
 
@@ -123,6 +126,7 @@ A refused open or close changes nothing and returns ASCOM's **InvalidOperation**
 | A fault is latched | `A fault is latched: a person must clear it first: No target magnet after 61.0 s >= 60.0 s timeout` | Find the cause, then clear the fault in the web UI. |
 | Supply low | `Supply 10.9 V < 11.5 V` | Check the 12 V supply. |
 | Closing (open) | `The roof is closing or was stopped while closing: an imaging app can't reverse a close` | Let it close, or open it from the web UI. |
+| The automatic close is armed (open) | `The automatic close is still armed after unsafe weather and would close the roof again at once: an imaging app can't open it until the weather has been safe for 60 s (42 s left)` | Wait the seconds it names and send the open again (a sequence's retry or a short wait before **Open dome shutter**). After unsafe weather the [weather hold](close-on-unsafe.md) stays fired until the weather has been safe for the hold's length; an open accepted meanwhile would be closed again within a second. |
 | Closing in bad weather or daylight (stop) | `The roof is closing and the weather isn't safe (unsafe: rain): an imaging app can't stop it (Stop in the web UI can)`; in daylight: `The roof is closing in daylight (Sun 3.2° ≥ 0.0°): ... can't stop it ...` | Use Stop in the web UI if the roof must not close. |
 | Busy | `An upload is being written: try again in a moment` | Wait for the upload or restart to finish. |
 | Not connected | ASCOM NotConnected (`1031`): `Not connected: connect to the Dome first` | Connect first. |

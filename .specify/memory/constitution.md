@@ -1,6 +1,21 @@
 <!--
 Sync Impact Report
-- Version: 12.1.0 -> 12.2.0 (MINOR: Principle II says what a fresh N.I.N.A. reading is. Nothing is
+- Version: 12.2.0 -> 12.3.0 (MINOR: Principles III and IV say what an accepted move reports before it
+  starts and when an automation's Open is refused. Nothing is relaxed: an automation opens less.)
+- Modified: III. Unsafe Ends Closed. New: an Open from an automation (Alpaca, MQTT) is refused while
+  the automatic close is armed (the weather hold has fired and not yet cleared), with the time left;
+  a person's isn't (finding F39b: refuse it too, or let it stand the close down, is the owner's
+  choice). IV. Standards Conformance. New: an accepted `OpenShutter`/`CloseShutter` reads Opening or
+  Closing (`Slewing` true) from the moment it returns, also while it waits to start; once it won't
+  run, `ShutterStatus` reads where the roof is, or Error after a failed wait; an open the roof
+  won't carry out is refused at the call, never accepted and dropped.
+- Why: findings F58/F39 (spec 052), the owner's first real session: after a SQMeter brownout the
+  close was armed, N.I.N.A.'s and the owner's opens were accepted and sent back to closed within
+  0.3 s, and N.I.N.A.'s Open Dome Shutter (one ShutterStatus read about 1 s after the call) failed
+  with "ShutterStatus is still reported as closed after calling OpenShutter".
+- Templates: no change. Docs: docs/user-guide/alpaca.md, docs/user-guide/close-on-unsafe.md,
+  specs/052-open-reports-opening/spec.md.
+- Earlier: 12.1.0 -> 12.2.0 (MINOR: Principle II says what a fresh N.I.N.A. reading is. Nothing is
   relaxed: a reading N.I.N.A. serves from its cache no longer confirms a park.)
 - Modified: II. Close Only Onto a Parked Mount. New: **a frozen reading is not a reading**. A
   N.I.N.A. reply whose mount clock (`SiderealTime`) hasn't moved for 20 s while N.I.N.A. answers is
@@ -752,7 +767,10 @@ Doubt about the weather MUST resolve to "unsafe".
 - Losing every way to confirm the park while unsafe leaves the roof open and raises a critical
   alert. The alert path MUST NOT depend on the device that failed where another path exists.
 - The roof MUST NOT open by itself. Opening is always a person's or a client's command, and it is
-  refused while the verdict is unsafe, except a person's confirmed open.
+  refused while the verdict is unsafe, except a person's confirmed open. An automation's open
+  (Alpaca, MQTT) is also refused while the automatic close is armed (12.3.0: the weather hold has
+  fired and the weather hasn't yet been safe for its length), saying how long is left: the close
+  would undo it at once.
 - **A person's confirmed open.** A person (authenticated) may open past daylight, past the
   weather source's own report of unsafe for anything but rain, and (10.0.0, Principle II) past the
   park, naming each reason after they are listed. Rain, a failed rain sensor and any doubt about a source (missing, stale, unreachable,
@@ -802,6 +820,10 @@ N.I.N.A. drives the roof as an Alpaca Dome, and it must behave exactly as the sp
 - `CloseShutter` and `OpenShutter` return at once and report progress through `ShutterStatus`.
   A move the safety rules refuse returns an Alpaca error saying why (Principles II and III). It
   never silently does nothing.
+- An accepted move reads Opening or Closing, with `Slewing` true, from the moment the call returns,
+  also while it waits to start (the park, an upload) (12.3.0). Once it won't run (a stop, the
+  automatic close, a wait that fails), `ShutterStatus` reads where the roof is, or Error after a
+  failed wait. A move the roof won't carry out is refused at the call, never accepted and dropped.
 - Every change to the Alpaca code MUST pass ASCOM ConformU (conformance and the Alpaca protocol
   check) with zero errors, issues and configuration alerts, in CI against the simulator, for every
   device it offers.
@@ -975,4 +997,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 12.2.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-27
+**Version**: 12.3.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-27

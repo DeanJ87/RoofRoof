@@ -17,6 +17,7 @@
 
 #include "AlertEngine.h"
 #include "AlertRetry.h"
+#include "CommandCheck.h"
 #include "NeedsPerson.h"
 #include "CloseSequence.h"
 #include "Config.h"
@@ -83,6 +84,9 @@ namespace SQM
         RoofIo::CloseRearm standDown() const { return {standDownLeftS.load(), standDownLapsing.load()}; }
         // Spec 030, any task: the weather hold as of the last step (status document).
         RoofIo::WeatherHoldStatus weatherHoldStatus() const;
+        // Spec 052, any task: the automatic close is armed (the hold has fired
+        // and not yet cleared), as of the last step: a remote Open is refused.
+        RoofIo::CloseArmed closeArmed() const { return {armedNow.load(), armedLeftMs.load(), armedHoldMs.load()}; }
         // Spec 030, any task: the roof needs a person (the status, MQTT and the
         // banner), as of the last step.
         RoofIo::NeedsPersonStatus needsPersonStatus() const;
@@ -118,6 +122,9 @@ namespace SQM
         std::atomic<bool> standDownLapsing{false};  // spec 044
         std::atomic<bool> nothingWantsClose{false}; // the last step: weather safe and no daylight close
         std::atomic<bool> releaseWanted{false};
+        std::atomic<bool> armedNow{false}; // spec 052: closeArmed()
+        std::atomic<uint32_t> armedLeftMs{0};
+        std::atomic<uint32_t> armedHoldMs{0};
         AlertOut alertOut;
         // Spec 030: the needs-a-person watcher (main loop) and its status copy.
         CloseSeq::NeedsPerson needsPerson;
