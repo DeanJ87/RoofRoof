@@ -29,7 +29,7 @@
 | Heap kept | none; the task's 8 KB stack is still taken only while it runs |
 | Per alert | unchanged (the job, spec 035) |
 | Alert task stack | 8,192 B; deepest static path 5,792 B + 1 KB margin |
-| Image | 1,695,399 -> 1,698,307 B (+2.9 KB), 92.4% -> 92.6% of the 1,835,008 B OTA slot |
+| Image | main after 052: 1,697,472 B (92.5%, CI); this branch 1,700,384 B (92.7%) of the 1,835,008 B OTA slot (+2.9 KB; CI warns above 90%, fails above 95%); `size-baseline.json` recorded again (it still held 1,665,280 B from spec 038) |
 
 ## Bench note for the owner
 
