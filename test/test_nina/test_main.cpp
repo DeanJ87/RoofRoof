@@ -45,6 +45,36 @@ void test_parse_info_parked(void)
     TEST_ASSERT_EQUAL_UINT32(NOW_MS, reading.takenAtMs);
 }
 
+// Spec 051: the mount's clock, when the reply has it.
+void test_parse_info_sidereal_time(void)
+{
+    const MountReading parked = API.parseMountInfo(200, Fixtures::INFO_PARKED, NOW_MS);
+    TEST_ASSERT_TRUE(parked.hasSiderealTime);
+    TEST_ASSERT_EQUAL_FLOAT(5.2f, static_cast<float>(parked.siderealHours));
+    TEST_ASSERT_FALSE(parked.frozen);
+    // Missing: no clock, the reading as before.
+    const MountReading tracking = API.parseMountInfo(200, Fixtures::INFO_TRACKING, NOW_MS);
+    TEST_ASSERT_TRUE(tracking.status == ReadingStatus::Good);
+    TEST_ASSERT_FALSE(tracking.hasSiderealTime);
+    // A whole number is a number; text, a negative or past 24 h is no clock.
+    const char *whole = R"({"Response":{"AtPark":true,"Slewing":false,"Connected":true,"SiderealTime":7},"Success":true,"Error":""})";
+    const MountReading w = API.parseMountInfo(200, whole, NOW_MS);
+    TEST_ASSERT_TRUE(w.hasSiderealTime);
+    TEST_ASSERT_EQUAL_FLOAT(7.0f, static_cast<float>(w.siderealHours));
+    const char *bad[] = {
+        R"({"Response":{"AtPark":true,"Slewing":false,"Connected":true,"SiderealTime":"NaN"},"Success":true,"Error":""})",
+        R"({"Response":{"AtPark":true,"Slewing":false,"Connected":true,"SiderealTime":-1.5},"Success":true,"Error":""})",
+        R"({"Response":{"AtPark":true,"Slewing":false,"Connected":true,"SiderealTime":25.0},"Success":true,"Error":""})",
+    };
+    for (const char *body : bad)
+    {
+        const MountReading r = API.parseMountInfo(200, body, NOW_MS);
+        TEST_ASSERT_TRUE(r.status == ReadingStatus::Good);
+        TEST_ASSERT_TRUE(r.atPark);
+        TEST_ASSERT_FALSE(r.hasSiderealTime);
+    }
+}
+
 void test_parse_info_tracking_not_parked(void)
 {
     const MountReading reading = API.parseMountInfo(200, Fixtures::INFO_TRACKING, NOW_MS);
@@ -236,6 +266,7 @@ int main(int, char **)
     RUN_TEST(test_v2_info_request_is_get_mount_info);
     RUN_TEST(test_v2_park_request_is_get_mount_park);
     RUN_TEST(test_parse_info_parked);
+    RUN_TEST(test_parse_info_sidereal_time);
     RUN_TEST(test_parse_info_tracking_not_parked);
     RUN_TEST(test_parse_info_slewing);
     RUN_TEST(test_parse_info_disconnected_is_good_and_not_connected);

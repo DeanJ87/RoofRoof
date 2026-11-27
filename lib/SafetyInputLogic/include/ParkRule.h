@@ -73,7 +73,14 @@ namespace SQM
             // Spec 050: a park request waits for the mount to stop slewing
             // (SafetyPoller's ParkSender); describe() says so.
             bool askWaiting = false;
+            // Spec 051: N.I.N.A. answers, but its mount values stopped updating
+            // (Nina::MountClockWatch): counted as unreadable; describe() says so.
+            bool ninaFrozen = false;
         };
+
+        // Spec 051: the not-parked text for a frozen N.I.N.A. reading.
+        constexpr const char *PARK_NINA_FROZEN_TEXT =
+            "N.I.N.A.'s mount values have stopped updating (mount connection stuck?), park unknown";
 
         ParkResult evaluatePark(const ParkInputs &inputs);
         // "parked" or "not parked: N.I.N.A. stale: reading 12 s old > 10 s; park switch 1 open".

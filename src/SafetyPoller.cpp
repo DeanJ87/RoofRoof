@@ -560,8 +560,9 @@ namespace SQM
     {
         const Safety::HttpOutcome reply = ninaRequest(now.ninaUrl, api.mountInfoRequest());
         const uint64_t at = nowMs();
-        const Nina::MountReading reading = reply.status > 0 ? api.parseMountInfo(reply.status, reply.body, at)
-                                                            : Nina::failedReading(Nina::ReadingStatus::Unreachable, reply.error, at);
+        Nina::MountReading reading = reply.status > 0 ? api.parseMountInfo(reply.status, reply.body, at)
+                                                      : Nina::failedReading(Nina::ReadingStatus::Unreachable, reply.error, at);
+        watchClock(reading, generation); // spec 051: cached values are not a reading
         xSemaphoreTake(mutex, portMAX_DELAY);
         if (generation == state.ninaGeneration)
             state.nina = reading;

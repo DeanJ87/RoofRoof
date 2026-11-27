@@ -122,6 +122,7 @@ namespace SQM
             r.ninaMaxAgeMs = in.ninaMaxAgeMs;
             r.ninaAgeMs = elapsedMs(in.nina.takenAtMs, in.nowMs);
             r.ninaDetail = in.nina.detail;
+            r.ninaFrozen = in.nina.status == ReadingStatus::Unreadable && in.nina.frozen;
             if (in.switchesOnly)
             {
                 r.switchesOnly = true;
@@ -149,7 +150,7 @@ namespace SQM
             append(text, b & ParkNinaNotConfigured, "N.I.N.A. not configured");
             append(text, b & ParkNinaWaiting, "N.I.N.A. not read yet");
             append(text, b & ParkNinaUnreachable, ninaFailure(r, "not responding"));
-            append(text, b & ParkNinaUnreadable, ninaFailure(r, "reply unreadable"));
+            append(text, b & ParkNinaUnreadable, r.ninaFrozen ? PARK_NINA_FROZEN_TEXT : ninaFailure(r, "reply unreadable"));
             append(text, b & ParkNinaApiError, ninaFailure(r, "error"));
             append(
                 text,

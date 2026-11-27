@@ -120,3 +120,43 @@ Then watch the log: within a few seconds it shows `Weather safe` (or the reasons
 ### When N.I.N.A. can't be read
 
 With an address set and no good reading from N.I.N.A. for 60 seconds without a break (unreachable, unreadable, an API error or a stale reading), the **N.I.N.A. not reachable** alert (`nina_lost`, Normal by default) goes out with the error, the dashboard's Mount park row says so, and `roof.nina` in the status shows the state. The park then counts as not confirmed, so the roof stays open in unsafe weather with the critical alert "Can't close: N.I.N.A. unreachable, mount park unknown" until a person acts ([When N.I.N.A. can't be reached](close-on-unsafe.md#when-nina-cant-be-reached)). Without an address nothing is sent ([Alerts](alerts.md#the-roof)).
+
+### When N.I.N.A.'s mount values stop updating
+
+When the mount's USB serial link drops, the ASCOM driver (the OnStep hub, for one) can stay
+"connected" on a dead port. N.I.N.A. then goes on answering mount info with the **last values it
+read**: connected, `AtPark`, `Slewing`, the coordinates and the mount's clock all frozen (on the real
+rig it once sat like that for 26 hours, and N.I.N.A. even logged "Mount has parked" after a park
+that failed on the dead port). A cached "parked" is not a park: the mount may have been unparked
+just before the link died.
+
+So RoofRoof watches the mount's own clock in the same reply, `SiderealTime`, which moves about a
+second a second. If it hasn't moved for **20 s** while N.I.N.A. otherwise answers, the reading
+counts as unreadable: the park check says `not parked: N.I.N.A.'s mount values have stopped
+updating (mount connection stuck?), park unknown`, and everything that follows is what happens when
+N.I.N.A. can't be read:
+
+- no park is confirmed from it, and no open or close starts on it;
+- a move already under way follows [A move under way when N.I.N.A. stops
+  answering](close-on-unsafe.md#a-move-under-way-when-nina-stops-answering): it goes on only on
+  N.I.N.A.'s last answer having said parked;
+- a park request is decided as for an unreadable reply ([A park request never stops a
+  slew](close-on-unsafe.md#a-park-request-never-stops-a-slew)): never "already parked";
+- `roof.nina.state` reads `unreadable` with that text, the **N.I.N.A. not reachable** alert goes out
+  after 60 s as above, and the [N.I.N.A.-lost close](close-on-unsafe.md#the-opt-in-close-without-ninas-park),
+  if you turned it on, counts the time.
+
+The log says it once when it starts (`N.I.N.A.'s mount values have stopped updating (mount
+connection stuck?): SiderealTime unchanged for 20 s while N.I.N.A. answers. Park unknown until it
+moves again`) and once when the clock moves again (`N.I.N.A.'s mount values are updating again`).
+A clock that jumps (N.I.N.A. restarted, another mount) or a gap of more than 20 s between good
+readings starts the check again rather than counting as frozen. A reply without `SiderealTime`, or a
+mount that isn't connected, is read as before.
+
+To recover, reconnect the mount in N.I.N.A. (or replug its USB cable and reconnect the driver); the
+park counts again from the first reading whose clock moves.
+
+!!! note "The first 20 s"
+    The check needs time to see that the clock stopped: for up to 20 s after the link dies, the
+    frozen values still count. N.I.N.A. refreshes its values every few seconds (its device polling
+    interval), so a shorter limit would mistake a slow refresh for a dead link.

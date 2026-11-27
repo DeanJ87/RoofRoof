@@ -1,6 +1,23 @@
 <!--
 Sync Impact Report
-- Version: 12.0.0 -> 12.1.0 (MINOR: Principle II gains a rule for park requests. Nothing is
+- Version: 12.1.0 -> 12.2.0 (MINOR: Principle II says what a fresh N.I.N.A. reading is. Nothing is
+  relaxed: a reading N.I.N.A. serves from its cache no longer confirms a park.)
+- Modified: II. Close Only Onto a Parked Mount. New: **a frozen reading is not a reading**. A
+  N.I.N.A. reply whose mount clock (`SiderealTime`) hasn't moved for 20 s while N.I.N.A. answers is
+  N.I.N.A.'s cache, not the mount: it counts as unreadable (the park unknown), with everything that
+  follows from that (no park confirmed or move started on it, a move under way as when N.I.N.A.
+  stops answering, the park request as for an unreadable reply, the N.I.N.A.-lost alert and close).
+  A gap or a jump in the clock starts the check again; a reply without the clock is read as before.
+- New risk (II): the check needs 20 s to see a stopped clock, so for up to 20 s after the mount's
+  link dies its last values still count. A shorter limit would mistake N.I.N.A.'s own refresh
+  interval (2-5 s, set by the user) for a dead link.
+- Why: finding F60 (spec 051), the real rig: the mount's USB serial dropped, the OnStep hub stayed
+  connected on a dead port, and N.I.N.A.'s Advanced API returned Connected true with AtPark,
+  Slewing and the clock frozen, for 26 h once; N.I.N.A. logged "Mount has parked" after a park that
+  failed on the dead port.
+- Templates: no change. Docs: docs/user-guide/safety-inputs.md, docs/user-guide/close-on-unsafe.md,
+  docs/api/rest.md, specs/051-stale-nina-reading/spec.md.
+- Earlier: 12.0.0 -> 12.1.0 (MINOR: Principle II gains a rule for park requests. Nothing is
   relaxed: RoofRoof sends fewer park requests than before, never more.)
 - Modified: II. Close Only Onto a Parked Mount. New: **a park request never stops a slew**. N.I.N.A.'s
   Advanced API stops a slewing mount and parks it at once (OnStep refuses the park while it
@@ -630,6 +647,14 @@ Closing onto an unparked telescope is the most expensive failure this device can
   decided on a reading taken after the stop as above; still slewing 30 s after the stop, the park
   is sent anyway, logged. The roof must still be at an end when it is sent (above). N.I.N.A.'s answer to
   the request never confirms the park; only AtPark in a fresh reading does.
+- **A frozen reading is not a reading** (12.2.0). N.I.N.A. answers with its last known values when
+  the mount's link has died under a driver that stays connected, so "fresh" means the mount's own
+  values are moving, not only that N.I.N.A. answered: a reply whose mount clock (`SiderealTime`)
+  hasn't moved for 20 s while N.I.N.A. answers counts as unreadable, the park unknown, with all that
+  follows for an unreadable reading here and in Principle III. A gap between good readings or a
+  jump of the clock starts the check again (not frozen); a reply without the clock, or with the
+  mount not connected, is judged as before. Risk: for up to 20 s after the link dies its last
+  values still count.
 - If the park can't be confirmed, the roof MUST stay open and raise a critical alert. This holds
   even when it's raining: a wet telescope can be dried, a crushed one can't be fixed. The automatic
   close keeps asking for the park for as long as the roof should close, and the critical alert names
@@ -950,4 +975,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 12.1.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-26
+**Version**: 12.2.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-27

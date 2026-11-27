@@ -192,6 +192,9 @@ park request on a N.I.N.A. reading taken after it (it reads N.I.N.A. at once):
 - otherwise (stopped somewhere else, or not connected): the park is sent, once;
 - N.I.N.A. can't be read: the park is sent as before, unless its last good reading is still within
   its freshness (10 s) and says slewing.
+  A reading whose mount values have stopped updating (spec 051, [When N.I.N.A.'s mount values stop
+  updating](safety-inputs.md#when-ninas-mount-values-stop-updating)) counts as one that can't be
+  read: it never says "already parked".
 
 Requests while one waits (the automatic close and a command's park wait each ask again every park
 request gap) join it, and a request soon after RoofRoof's own send is decided only on a reading
@@ -316,6 +319,11 @@ information alert **Finished without a fresh park reading** (`finished_without_p
 setting of its own) say "Finished the close without a fresh park reading (N.I.N.A. unreachable)"
 (or "the open"). The next move needs a fresh park again, so with N.I.N.A. still silent the roof
 then stays where it is, at an end ([When N.I.N.A. can't be reached](#when-nina-cant-be-reached)).
+
+N.I.N.A. answering with frozen values (its mount values have stopped updating: the mount's link
+died while the driver stayed connected) counts the same as N.I.N.A. not answering, here and
+everywhere else ([When N.I.N.A.'s mount values stop
+updating](safety-inputs.md#when-ninas-mount-values-stop-updating)).
 
 
 ## Park before every move
