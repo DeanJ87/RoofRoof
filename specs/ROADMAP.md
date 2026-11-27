@@ -550,6 +550,16 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
 - **Out of scope:** a setting for the wait's limit; a way for a requester to withdraw a request;
   049 (paused).
 
+### 051 N.I.N.A.'s frozen mount values are not a reading (base: main after 050)
+
+- **Scope:**
+  - Constitution 12.2.0 (II): finding F60, N.I.N.A. serving cached mount values over a dead serial
+    port. `SiderealTime` from `mount/info`; unmoved for 20 s while N.I.N.A. answers: the reading is
+    unreadable (park unknown), handled as N.I.N.A. not read (specs 027/030/047/050). A gap or a jump
+    restarts the check; no `SiderealTime`, as before. Logged on entry and exit.
+- **Out of scope:** `UTCDate` (a date string to parse for no extra evidence); a setting for the
+  20 s limit; telling N.I.N.A. to reconnect the mount.
+
 ## Merge order
 
 ```text

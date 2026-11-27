@@ -1,5 +1,6 @@
 #pragma once
 
+#include "MountClock.h"
 #include "NinaApi.h"
 #include "ParkSend.h"
 #include "PollSchedule.h"
@@ -148,6 +149,8 @@ namespace SQM
         void pollNina(const Nina::Api &api, const Targets &targets, uint32_t generation);
         // Spec 050: `stopOnly` sends the stop slew instead (no park, not recorded as one).
         void sendPark(const Nina::Api &api, const Targets &targets, uint32_t generation, bool stopOnly);
+        // Spec 051: a reading whose mount clock has stopped is marked frozen (logged once).
+        void watchClock(Nina::MountReading &reading, uint32_t generation);
         // Spec 050: a waiting park request, decided on the latest reading: what to send now.
         Safety::ParkSendEvent stepPark(const Targets &targets, uint32_t generation);
         void pollLocation(const Site::Endpoint &from, uint32_t generation);
@@ -185,5 +188,8 @@ namespace SQM
         // Spec 050: the poller task's own (its flag is copied into `state`).
         Safety::ParkSender parkSender;
         std::atomic<bool> mountMayMove{false};
+        // Spec 051: the poller task's own; restarted for new N.I.N.A. settings.
+        Nina::MountClockWatch mountClock;
+        uint32_t clockGeneration = 0;
     };
 } // namespace SQM

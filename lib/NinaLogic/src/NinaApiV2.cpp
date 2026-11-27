@@ -36,7 +36,7 @@ namespace SQM
             // body isn't a JSON object.
             bool readEnvelope(const std::string &body, ResponseKind kind, DynamicJsonDocument &doc)
             {
-                StaticJsonDocument<192> filter;
+                StaticJsonDocument<256> filter; // spec 051: room for SiderealTime on a 64-bit host too
                 filter["Success"] = true;
                 filter["Error"] = true;
                 if (kind == ResponseKind::Text)
@@ -48,6 +48,7 @@ namespace SQM
                     filter["Response"]["Connected"] = true;
                     filter["Response"]["AtPark"] = true;
                     filter["Response"]["Slewing"] = true;
+                    filter["Response"]["SiderealTime"] = true; // spec 051: is the mount live?
                 }
                 const DeserializationError error = deserializeJson(doc, body, DeserializationOption::Filter(filter));
                 return !error && doc.is<JsonObject>();
@@ -87,6 +88,14 @@ namespace SQM
                     return failedReading(ReadingStatus::Unreadable, reading.detail, nowMs);
                 reading.atPark = atPark;
                 reading.slewing = slewing;
+                // Spec 051: optional; missing or out of range, the freshness check is skipped.
+                JsonVariantConst sidereal = response["SiderealTime"];
+                const double hours = sidereal.is<double>() ? sidereal.as<double>() : -1.0;
+                if (hours >= 0.0 && hours <= 24.0)
+                {
+                    reading.hasSiderealTime = true;
+                    reading.siderealHours = hours;
+                }
                 return reading;
             }
 

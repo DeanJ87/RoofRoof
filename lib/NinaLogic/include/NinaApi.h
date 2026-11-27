@@ -57,6 +57,13 @@ namespace SQM
             bool slewing = false;
             uint64_t takenAtMs = 0; // 64-bit milliseconds since start: never wraps
             std::string detail;     // why it isn't Good ("HTTP 500", "missing AtPark", N.I.N.A.'s Error)
+            // Spec 051: the mount's own clock (SiderealTime, hours 0-24), when
+            // the reply has it; how the poller tells live values from cached ones.
+            bool hasSiderealTime = false;
+            double siderealHours = 0.0;
+            // Spec 051: Unreadable because N.I.N.A. answers but its mount values
+            // stopped updating (MountClockWatch); the park is unknown.
+            bool frozen = false;
         };
 
         // A failed attempt (no reply), stamped `nowMs`.

@@ -691,7 +691,7 @@ The weather sources, the park and N.I.N.A. as the device last evaluated them (on
 | `weather.verdict`, `weather.text` | `safe`, `unsafe` or `unknown`, and the same text as `roof.weatherText` in the status |
 | `weather.http`, `weather.mqtt` | Each SQMeter source: `state` (`off`, `waiting`, `good`, `stale`, `unreachable`, `unreadable`, `offline`), `ageMs` since its last good reply, the stale `limitMs`, SQMeter's `safe` and `flags` (its `reasonFlags`) from that reply, `reasons` (SQMeter's own reasons text from that reply, `""` when it is safe or sent none; without it `text` words the flags: "cloud cover", "rain"), and the reason `text` ("" when off, or good and safe) |
 | `park.parked`, `park.text` | The park rule's answer, as `roof.parkConfirmed` and `roof.parkText` |
-| `nina.state` | `notConfigured`, `waiting`, `good`, `unreachable`, `unreadable` or `apiError`; `connected`, `atPark` and `slewing` only mean something when it is `good`; `ageMs` since the reading; `text` the failure |
+| `nina.state` | `notConfigured`, `waiting`, `good`, `unreachable`, `unreadable` or `apiError`; `connected`, `atPark` and `slewing` only mean something when it is `good`; `ageMs` since the reading; `text` the failure (spec 051: `unreadable` with "N.I.N.A.'s mount values have stopped updating (mount connection stuck?)" when N.I.N.A. answers but the mount's clock hasn't moved for 20 s) |
 | `…generation` | Goes up when that source's settings change (its record starts again), so a client can tell a reading of the new settings from an old one |
 
 ---
