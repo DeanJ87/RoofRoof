@@ -1022,6 +1022,9 @@ Trend (lowest largest block / lowest free, per minute, newest first; 15 min 1842
 Network returns (newest first; 1 since start; the heap's lows over the 60 s after each):
   minute    73, uptime 4380 s: link back after 121 s; lowest largest 18420 B, free 40112 B; 9 busy at connect, at most 3 open; MQTT after 10.2 s; discovery kept by the broker
   minute     0, uptime 6 s: first on a network; lowest largest 30708 B, free 52240 B; 0 busy at connect, at most 2 open; MQTT after 10.0 s; discovery published again
+Alert deliveries (HTTPS): queued 12, dropped (queue full) 0, waits for memory 3, waits for a move 41, gave up 0
+Alert task: least stack left 2340 B of 8192 B (0: not run since start); TLS floor: largest block 45056 B, free 57344 B
+Last TLS send: free 66120 B (largest 47092 B) before, 31880 B with the session open
 ```
 
 | Part | Meaning |
@@ -1034,6 +1037,7 @@ Network returns (newest first; 1 since start; the heap's lows over the 60 s afte
 | `Free blocks of 1 KB or more` | Spec 045: up to 24 free blocks in address order, each with what is in use between it and the one before it in its region (bytes, blocks and the largest of them, a task's stack named). A few small blocks between two large free ones is what cut the largest block apart |
 | `Trend` | Spec 045: each minute of the last hour (minutes since start), its lowest largest free block and lowest free heap; the lowest largest block over 15 and 60 minutes is also in `/api/status` `heap8Bit`. Spec 048: `<- network return` marks a minute the network came back in; while a return is followed the heap is read ten times a second instead of once |
 | `Network returns` | Spec 048: the last 8 times the device came onto the network: the first time (`first on a network`), the link coming back (`link back after N s`), or with the link kept, the first request after 30 s or more with none (`requests back after N s without any (link kept)`). For each: the lowest largest free block and free heap over the 60 s after it (read ten times a second), the connections answered `503` at accept and the most open at once, when MQTT connected again, and whether Home Assistant discovery was sent again or kept by the broker. `(still following)` while the minute isn't over |
+| `Alert deliveries`, `Alert task`, `Last TLS send` | Spec 053: the HTTPS alerts handed to the alert task since start, those pushed out of its full queue (8), how often a send waited for memory (below the TLS floor) or for the roof to stop, and how many gave up after 10 minutes; the least stack the alert task has had left; the floor a TLS session needs; and for the last HTTPS send, the free heap and largest block before it and the free heap with its session open (the difference is about what the session held). The figures are only filled in once an HTTPS alert has been sent |
 
 ---
 

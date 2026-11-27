@@ -46,6 +46,11 @@ namespace SQM
             return largestBlock >= MIN_BLOCK_BYTES && freeHeap >= MIN_FREE_BYTES;
         }
 
+        bool tlsFits(uint32_t largestBlock, uint32_t freeHeap)
+        {
+            return largestBlock >= TLS_MIN_LARGEST_BLOCK_BYTES && freeHeap >= TLS_MIN_FREE_BYTES;
+        }
+
         bool replySlotFree(const char *path, bool isPost, uint32_t repliesInFlight)
         {
             return replySlotFree(path, isPost, repliesInFlight, MAX_REPLIES_IN_FLIGHT);

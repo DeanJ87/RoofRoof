@@ -1,6 +1,20 @@
 <!--
 Sync Impact Report
-- Version: 12.2.0 -> 12.3.0 (MINOR: Principles III and IV say what an accepted move reports before it
+- Version: 12.3.0 -> 12.4.0 (MINOR: Principle VI gains a rule for the alert task's TLS sessions.
+  Nothing is relaxed: alerts wait for a still roof and for memory, they are never dropped for it.)
+- Modified: VI. Embedded Resource Budgets. New: **alerts never touch roof control**. The roof's
+  control task only sets flags for the alerts; the main loop only hands an alert to the alert task
+  (a fixed queue: no wait, no allocation beyond the job; full: the oldest non-critical gives way,
+  sent again by the outbox). The alert task runs on the other core from the roof's control task, at
+  the lowest priority, and starts no TLS session while the roof moves or below the TLS heap floor
+  (`HeapSafe::TLS_MIN_LARGEST_BLOCK_BYTES`, `TLS_MIN_FREE_BYTES`); it waits with a back-off and
+  gives up after 10 minutes (skipped for now, sent again).
+- Why: findings F55/F56 (spec 053), the owner's first real night: with Pushover on, an alert's TLS
+  session started with the largest block near 5 KB; the roof's control steps came 344 ms late
+  (every move stopped by the motor watchdog) and the device restarted on its interrupt watchdog.
+- Templates: no change. Docs: docs/user-guide/alerts.md, docs/development/heap-budget.md,
+  docs/api/rest.md, specs/053-alerts-off-control-loop/.
+- Earlier: 12.2.0 -> 12.3.0 (MINOR: Principles III and IV say what an accepted move reports before it
   starts and when an automation's Open is refused. Nothing is relaxed: an automation opens less.)
 - Modified: III. Unsafe Ends Closed. New: an Open from an automation (Alpaca, MQTT) is refused while
   the automatic close is armed (the weather hold has fired and not yet cleared), with the time left;
@@ -853,6 +867,12 @@ Decision logic MUST be testable on a desktop without hardware.
   SIZE-04).
 - Request handlers on the async TCP task MUST NOT block on the network or on hardware. Outgoing
   HTTP and HTTPS (SQMeter, N.I.N.A., alerts) runs on its own task, with one TLS session at a time.
+- Alerts MUST NEVER touch roof control (12.4.0): the roof's control task only raises flags; the
+  main loop hands an alert to the alert task without waiting (a fixed queue; full, the oldest
+  non-critical gives way); the alert task runs on the core the control task doesn't, at the lowest
+  priority, and MUST NOT start a TLS session while the roof moves or with the heap below the TLS
+  floor (`HeapSafe::tlsFits`). It waits with a back-off and gives up after 10 minutes (sent again
+  by the outbox).
 - Changes that add heap or stack use MUST be measured on a device, keeping the main loop and motion
   task stack headroom above 2 KB.
 - Persisted config MUST stay within its NVS limits and be validated before saving.
@@ -997,4 +1017,4 @@ The platform is copied from SQMeter, not shared, because this project has a fixe
   admit no such exception.
 - Each PR description notes which principles the change touches and how they were satisfied.
 
-**Version**: 12.3.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-27
+**Version**: 12.4.0 | **Ratified**: 2026-11-10 | **Last Amended**: 2026-11-27

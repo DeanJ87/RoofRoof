@@ -45,10 +45,10 @@ On demand (taken while in use, then freed):
 
 | Consumer | Before 038 | After 038 | Notes |
 |---|---:|---:|---|
-| `alerts` task stack | 8,192 | 8,192 | started for an HTTPS alert, exits when idle |
+| `alerts` task stack | 8,192 | 8,192 | started for an HTTPS alert, exits when idle; spec 053: on core 0, deepest static path 5.8 KB |
 | `config_save` task stack (fix 041) | - | 10,240 | every web settings save, while it runs (was on `async_tcp`) |
 | `backup_job` task stack | 8,192 | 10,240 (fix 041) | a backup or a restore preview |
-| TLS session (alert, https SQMeter) | about 25-40 KB | same | dynamic buffers, 16 KB in / 4 KB out at most |
+| TLS session (alert, https SQMeter) | about 25-40 KB | same | dynamic buffers, 16 KB in / 4 KB out at most; spec 053: an alert's only starts above the TLS floor |
 | Unsent data per connection | up to 5,744 | up to 5,744 | `CONFIG_LWIP_TCP_SND_BUF_DEFAULT`; halving it stalled MQTT after a network return |
 | Status reply | 3 KB pool + 1 KB pieces | same | at most 2 replies in flight (spec 037) |
 | `GET /api/config` | 2 x 9.7 KB | same | behind the memory guard |
@@ -159,6 +159,43 @@ python3 tools/soak/return_soak.py --host 192.168.1.245 --cycles 5 --down 90 --up
 
 A pass: no restart, the reserve never spent, a return recorded for every cut, and the largest
 block at or above 16 KB after each.
+
+## Alerts and the roof (spec 053)
+
+Findings F55/F56: with Pushover on, an alert's TLS session started with the largest block near
+5 KB; the roof's control steps came 344 ms late and the device restarted on its interrupt watchdog
+(crash records 44 and 45). An HTTPS alert now:
+
+- is handed over by the main loop through a fixed queue of 8 jobs (`Alerts::SendQueue`, a few steps
+  under a spinlock, nothing allocated but the job itself); full, the oldest non-critical job is
+  failed ("Queue full") and the outbox sends it again; the roof's control task never touches it;
+- is sent by the `alerts` task: priority 1 on core 0, while the roof's control task is priority 5
+  on core 1, so a handshake's arithmetic never shares the control task's core;
+- starts its TLS session only with the roof still and the 8-bit heap at or above the **TLS floor**
+  (`HeapSafe::tlsFits`): a 44 KiB (45,056 B) free block, so the session comes out of one region and
+  leaves the scattered small blocks to the web server and the network, and 56 KiB (57,344 B) free,
+  so about 16 KB is left with the session at its largest (the spec 037 soak's floor). The floor is
+  checked again after the HTTPS lock is taken (an https SQMeter's session may have come first).
+  Below it the send waits 2 s, doubling to 30 s; after 10 minutes it is skipped for now.
+
+| Reading (board, before spec 053) | Largest block | Free | TLS floor |
+|---|---:|---:|---|
+| At rest, spec 038 | 57.3-61.4 KB | 67.6-69.3 KB | goes |
+| At rest, finding F51 (spec 045 build) | 38.9 KB | 63.7 KB | waits |
+| Main 6275f8a, live board, 2026-11-27 | 47.1 KB (lowest 23.5 KB in 15 min) | 59.5 KB | goes, waits in the dips |
+| F55, when the alerts went out | 5.4 KB | - | waits |
+
+The `alerts` stack stays 8 KB: `tools/firmware/stack_depth.py` (CI) follows an HTTPS alert from
+the task down through `HTTPClient` and the secure client's connect into the mbedTLS handshake:
+deepest 5,792 B, with the 1 KB margin 6,816 B of 8,192 B. mbedTLS calls through pointers (the
+random generator, the cipher and digest tables) that the check can't follow, so the measured
+least-left matters: the task logs it when it stops ("Alert task idle: stopped (least stack left
+N B of 8192 B)") and `GET /api/diag/heap` keeps the least since start.
+
+On the bench (owner check, spec 053): with Pushover on, each send logs "pushover HTTP 200 in N ms:
+heap free A B (largest B B) before, C B with the session open"; A - C is about what the session
+held. The floor wants about 40 KB for the session plus 16 KB left; if the bench shows sessions well
+under 40 KB, lower `TLS_MIN_FREE_BYTES` with the measurement in its comment.
 
 ## Stack depth of a settings save (fix 041)
 

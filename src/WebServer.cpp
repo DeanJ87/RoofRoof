@@ -140,7 +140,10 @@ namespace SQM
         configRevision = esp_random() >> 1;
         // Alerts wait while an upload is written: TLS and flash writes together
         // stall the upload (SQMeter spec 012 FR-003a).
-        alertDispatcher = std::make_unique<AlertDispatcher>(mqttClient, [] { return uploadActive.load(); });
+        // Spec 053: HTTPS alerts wait while the roof moves (read from the
+        // roof's atomics, so safe from the alert task).
+        alertDispatcher =
+            std::make_unique<AlertDispatcher>(mqttClient, [] { return uploadActive.load(); }, [this] { return roofMoving(); });
         SafetyPoller::setUploadBusy([] { return uploadActive.load(); }); // spec 020: no https SQMeter read during an upload
     }
 

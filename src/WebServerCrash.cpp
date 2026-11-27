@@ -1,4 +1,5 @@
 #include "CrashLog.h"
+#include "HeapGuard.h"
 #include "HeapMap.h"
 #include "RoofControl.h"
 #include "WebReply.h"
@@ -16,6 +17,41 @@ namespace SQM
         constexpr const char *CRASHES_PATH = "/api/diag/crashes";
         constexpr const char *LOG_PATH = "/api/diag/log";
         constexpr const char *HEAP_PATH = "/api/diag/heap"; // spec 038
+
+        // Spec 053: the HTTPS alerts' queue, waits and TLS heap, after the census.
+        void appendAlertDelivery(HeapSafe::ChunkText &out, const AlertDeliveryStats &stats)
+        {
+            char line[200];
+            int n = snprintf(
+                line,
+                sizeof(line),
+                "Alert deliveries (HTTPS): queued %lu, dropped (queue full) %lu, waits for memory %lu, waits for a move %lu, gave up %lu\n",
+                static_cast<unsigned long>(stats.queued),
+                static_cast<unsigned long>(stats.dropped),
+                static_cast<unsigned long>(stats.memoryWaits),
+                static_cast<unsigned long>(stats.moveWaits),
+                static_cast<unsigned long>(stats.gaveUp));
+            out.append(line, static_cast<size_t>(n) < sizeof(line) ? static_cast<size_t>(n) : sizeof(line) - 1);
+            n = snprintf(
+                line,
+                sizeof(line),
+                "Alert task: least stack left %lu B of %lu B (0: not run since start); TLS floor: largest block %lu B, free %lu B\n",
+                static_cast<unsigned long>(stats.stackLeast),
+                static_cast<unsigned long>(AlertDispatcher::TASK_STACK_BYTES),
+                static_cast<unsigned long>(HeapSafe::TLS_MIN_LARGEST_BLOCK_BYTES),
+                static_cast<unsigned long>(HeapSafe::TLS_MIN_FREE_BYTES));
+            out.append(line, static_cast<size_t>(n) < sizeof(line) ? static_cast<size_t>(n) : sizeof(line) - 1);
+            if (stats.lastFreeBefore == 0)
+                return;
+            n = snprintf(
+                line,
+                sizeof(line),
+                "Last TLS send: free %lu B (largest %lu B) before, %lu B with the session open\n",
+                static_cast<unsigned long>(stats.lastFreeBefore),
+                static_cast<unsigned long>(stats.lastLargestBefore),
+                static_cast<unsigned long>(stats.lastFreeDuring));
+            out.append(line, static_cast<size_t>(n) < sizeof(line) ? static_cast<size_t>(n) : sizeof(line) - 1);
+        }
     } // namespace
 
     void WebServer::setupCrashRoutes()
@@ -67,6 +103,8 @@ namespace SQM
             WebReply::sendBusy(request);
             return;
         }
+        if (alertDispatcher)
+            appendAlertDelivery(text, alertDispatcher->deliveryStats());
         WebReply::sendText(request, 200, "text/plain; charset=utf-8", std::move(text));
     }
 } // namespace SQM

@@ -32,6 +32,19 @@ namespace SQM
         // dispatcher now (its record, the MQTT text and the HTTPS job: a few
         // small blocks). Below it, the alert waits for a later step.
         bool alertFits(uint32_t largestBlock, uint32_t freeHeap);
+        // Spec 053 (findings F55/F56): the heap an HTTPS alert needs before its
+        // TLS session may start. A session (mbedTLS, dynamic buffers, 16 KB in
+        // / 4 KB out) takes about 25-40 KB in pieces, the largest the 16.4 KB
+        // record buffer (spec 038). Started on a short heap it took the device
+        // to a 5 KB largest block and starved everything else. So: a 44 KiB
+        // (45 KB) free block, so the session comes out of one region and leaves
+        // the scattered small blocks to the web server and the network; and
+        // 56 KiB free, so 16 KB is left with the session at its largest (the
+        // spec 037 soak's floor). Below either, the send waits (never started).
+        constexpr uint32_t TLS_MIN_LARGEST_BLOCK_BYTES = 44 * 1024;
+        constexpr uint32_t TLS_MIN_FREE_BYTES = 56 * 1024;
+        // Whether a TLS session may start with this heap (8-bit heap figures).
+        bool tlsFits(uint32_t largestBlock, uint32_t freeHeap);
         // Spec 037: built replies (about 9 KB each with the server's buffers)
         // being sent at once. Past this a non-essential API request is
         // answered "busy": admitting several at the same free-heap reading

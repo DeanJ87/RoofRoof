@@ -573,6 +573,20 @@ Each spec lists its scope, the spec it's built on, and what it leaves out.
   stands the close down, is the owner's choice); ShutterStatus Error after a failed wait lasting
   until the next command (spec 027).
 
+### 053 Alerts off the control loop (base: main after 052)
+
+- **Scope:**
+  - Constitution 12.4.0 (VI): findings F55/F56, an HTTPS alert's TLS session started on a starved
+    heap (largest block 5 KB), control steps 344 ms late, interrupt-watchdog restarts. The alert
+    task on core 0 (the roof's is core 1) at priority 1; a fixed queue of 8 from the main loop
+    (never waits; full: the oldest non-critical gives way; critical first); no TLS session while
+    the roof moves or below the TLS floor (45 KB block, 57 KB free), back-off 2-30 s, give up
+    after 10 min (the outbox resends); counts and the last session's memory in `/api/diag/heap`;
+    the alert task in the stack-depth check.
+- **Out of scope:** smaller mbedTLS buffers (`CONFIG_MBEDTLS_SSL_IN_CONTENT_LEN`, needs its own
+  soak); MQTT alerts off the main loop (PubSubClient isn't thread-safe); the roof task's own
+  serial logging (research R3).
+
 ## Merge order
 
 ```text

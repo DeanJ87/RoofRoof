@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Stack depth check (fix 041): the deepest call path of a settings save fits its task.
 
+Spec 053 adds the alert task: an HTTPS alert down to its TLS handshake.
+
 A settings save on the async_tcp task's 8 KB stack (spec 038) overflowed it:
 the settings parse alone has a 3 KB frame, and the analog checks' snprintf
 went into the C library's float formatting and malloc below that. Saves now
@@ -200,6 +202,21 @@ TASK_CHECKS = [
         ("src/WebServerBackup.cpp", r"BACKUP_JOB_STACK_BYTES = ([\d\s*]+);"),
         [r"^_ZN3SQM9WebServer12runBackupJobEPv"],
     ),
+    # Spec 053: an HTTPS alert, down to the TLS handshake (HTTPClient reaches
+    # the secure client's connect through its vtable, so it is a stage).
+    TaskCheck(
+        "alerts (an HTTPS alert's TLS handshake)",
+        ("include/AlertDispatcher.h", r"TASK_STACK_BYTES = ([\d\s*]+);"),
+        [
+            r"^_ZN3SQM15AlertDispatcher9taskEntryEPv",
+            r"^_ZN3SQM15AlertDispatcher12sendMeasured",
+            r"^_ZN3SQM15AlertDispatcher4post",
+            r"^_ZN3SQM12_GLOBAL__N_18httpPost",
+            r"^_ZN10HTTPClient11sendRequestEPKcPhj",
+            r"^_ZN10HTTPClient7connectEv",
+            r"^_ZN19NetworkClientSecure7connectEPKct$",
+        ],
+    ),
 ]
 
 # Functions on async_tcp that must not reach the save path directly.
@@ -271,7 +288,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     graph = parse(disassemble(args.elf, args.toolchain))
     ok = True
-    print("Deepest stack of the tasks a settings save runs on (fix 041):")
+    print("Deepest stack of the tasks a settings save (fix 041) or an HTTPS alert (spec 053) runs on:")
     for check in TASK_CHECKS:
         passed, lines = check_task(graph, check, ROOT, args.path)
         ok &= passed
