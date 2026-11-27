@@ -61,6 +61,9 @@ SOURCES = {
     # what each channel's delivery reports in the recent alerts.
     "lib/DeviceCore/src/DeviceAlerts.cpp": ("alert", {}),
     "src/AlertDispatcher.cpp": ("alert", {}),
+    # Spec 053: the HTTPS sends' own details, and why one waits.
+    "src/AlertSender.cpp": ("alert", {}),
+    "lib/AlertLogic/src/AlertSend.cpp": ("alert", {}),
     # Roof faults and refusals with their values and limits (spec 003).
     "lib/RoofIoLogic/src/RoofText.cpp": ("roof", {"format": "fmt0"}),
     "lib/RoofIoLogic/src/RoofGates.cpp": ("roof", {}),
@@ -95,6 +98,8 @@ ASSIGN = {
     "lib/BoardLogic/src/PinText.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     "lib/DeviceCore/src/DeviceAlerts.cpp": re.compile(r"\btest\.(?:title|message)\s*=\s*"),
     "src/AlertDispatcher.cpp": re.compile(r"(?<![\w.>])(?:detail|record\.detail\[[^\]]+\])\s*=\s*(?!=)|\brecord\.setDetail\(\d+,\s*"),
+    "src/AlertSender.cpp": re.compile(r"(?<![\w.>])detail\s*=\s*(?!=)"),
+    "lib/AlertLogic/src/AlertSend.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),
     # Spec 020: why a group's values from SQMeter weren't taken.
     "lib/SafetyInputLogic/src/SqmeterSync.cpp": re.compile(r"\bresult\.refused\s*=\s*"),
     "lib/SafetyInputLogic/src/SqmeterSource.cpp": re.compile(r"(?<![\w.>])return\s*(?=\")"),

@@ -2,24 +2,17 @@
 #include "BenchMode.h"
 #include "DeviceCore.h"
 #include "AlertDelivery.h"
-#include "AlertRootCA.h"
 #include "Logger.h"
 #include "MQTTClient.h"
-#include "TlsLock.h"
 #include <Arduino.h>
-#include <ArduinoJson.h>
-#include <HTTPClient.h>
-#include <WiFi.h>
 
-#include "NetState.h"
-#include <WiFiClientSecure.h>
-#include "DualStackClient.h"
 #include "FixedRing.h"
-#include "NetAddress.h"
 #include <cstring>
 #include <ctime>
-#include <memory>
 #include <new>
+
+// The records and the hand-over to the alert task (main loop side). The
+// alert task's side, the HTTPS sends, is src/AlertSender.cpp (spec 053).
 
 namespace SQM
 {
@@ -28,97 +21,11 @@ namespace SQM
         constexpr const char *TAG = "Alerts";
         // Spec 045: the recent alerts, static data (one dispatcher), under its mutex.
         HeapSafe::FixedRing<AlertRecord, AlertDispatcher::MAX_RECORDS> recentRecords;
-        constexpr int HTTP_TIMEOUT_MS = 10000;
-        constexpr size_t MAX_ERROR_BODY_CHARS = 120;
 
         int64_t epochNow()
         {
             const time_t now = time(nullptr);
             return now >= 1704067200 ? static_cast<int64_t>(now) : 0;
-        }
-
-        // Plain http also reaches IPv6 literals and IPv6-only names (SQMeter spec 015).
-        std::unique_ptr<WiFiClient> clientFor(const std::string &url, bool insecureTls, const char *rootCa)
-        {
-            // Spec 035: checked (nullptr short of memory).
-            if (url.rfind("https://", 0) != 0)
-                return std::unique_ptr<WiFiClient>(new (std::nothrow) DualStackClient());
-            std::unique_ptr<WiFiClientSecure> secure(new (std::nothrow) WiFiClientSecure());
-            if (!secure)
-                return nullptr;
-            if (insecureTls)
-                secure->setInsecure();
-            else
-                secure->setCACert(rootCa);
-            return secure;
-        }
-
-        // HTTPClient splits "http://[fd00::10]:8080/x" at the first ':', so IPv6
-        // hosts go in by parts (the bracketed host is the Host header).
-        bool beginRequest(HTTPClient &http, WiFiClient &client, const std::string &url)
-        {
-            Net::HttpUrl parsed;
-            if (Net::parseHttpUrl(url, parsed) == Net::UrlError::None && parsed.host.ipv6)
-                return http.begin(client, Net::hostForUrl(parsed.host).c_str(), parsed.port, parsed.path.c_str(), parsed.https);
-            return http.begin(client, url.c_str());
-        }
-
-        // Which certificates an HTTPS request trusts.
-        struct TlsTrust
-        {
-            bool insecure = false; // the webhook's "skip certificate check"
-            const char *rootCa = ALERT_ROOT_CA_PEM;
-        };
-
-        // A failed reply's text. Pushover (and ntfy) explain failures in
-        // JSON: show the message itself rather than truncated raw JSON.
-        std::string errorBody(HTTPClient &http)
-        {
-            String response = http.getString();
-            StaticJsonDocument<512> errorDoc;
-            if (!deserializeJson(errorDoc, response))
-            {
-                const char *message = errorDoc["errors"][0] | errorDoc["error"] | static_cast<const char *>(nullptr);
-                if (message != nullptr)
-                    response = message;
-            }
-            return response.length() > 0 ? ": " + std::string(response.substring(0, MAX_ERROR_BODY_CHARS).c_str()) : std::string();
-        }
-
-        bool httpPost(const Delivery::HttpRequest &request, const TlsTrust &tls, std::string &detail)
-        {
-            const std::unique_ptr<WiFiClient> client = clientFor(request.url, tls.insecure, tls.rootCa);
-            if (!client)
-            {
-                detail = "Low memory";
-                return false;
-            }
-            HTTPClient http;
-            http.setTimeout(HTTP_TIMEOUT_MS);
-            http.setConnectTimeout(HTTP_TIMEOUT_MS);
-            if (!beginRequest(http, *client, request.url))
-            {
-                detail = "Invalid URL";
-                return false;
-            }
-            http.addHeader("Content-Type", request.contentType.c_str());
-            for (const auto &header : request.headers)
-                http.addHeader(header.first.c_str(), header.second.c_str());
-
-            const std::string &body = request.body;
-            const int code = http.POST(reinterpret_cast<uint8_t *>(const_cast<char *>(body.data())), body.size());
-            if (code <= 0)
-            {
-                detail = HTTPClient::errorToString(code).c_str();
-                http.end();
-                return false;
-            }
-            detail = "HTTP " + std::to_string(code);
-            const bool ok = code >= 200 && code < 300;
-            if (!ok)
-                detail += errorBody(http);
-            http.end();
-            return ok;
         }
 
         void wantedChannels(const AlertsConfig &cfg, uint8_t channelMask, bool (&wanted)[ALERT_CHANNEL_COUNT])
@@ -193,22 +100,23 @@ namespace SQM
         return "unknown";
     }
 
-    AlertDispatcher::AlertDispatcher(MQTTClient *mqttClient, BusyCheck busy)
+    AlertDispatcher::AlertDispatcher(MQTTClient *mqttClient, BusyCheck busy, BusyCheck moving)
         : mqtt(mqttClient),
-          networkBusy(std::move(busy))
+          networkBusy(std::move(busy)),
+          roofMoving(std::move(moving))
     {
     }
 
     AlertDispatcher::~AlertDispatcher()
     {
         // The dispatcher lives for the life of the firmware; the task is
-        // never stopped, so the queue/mutex are intentionally not deleted.
+        // never stopped, so the semaphores are intentionally not deleted.
     }
 
     void AlertDispatcher::begin()
     {
         mutex = xSemaphoreCreateMutex();
-        queue = xQueueCreate(QUEUE_LENGTH, sizeof(Job *));
+        wake = xSemaphoreCreateCounting(QUEUE_LENGTH, 0);
     }
 
     void AlertDispatcher::ensureTask()
@@ -216,16 +124,11 @@ namespace SQM
         bool expected = false;
         if (!taskRunning.compare_exchange_strong(expected, true))
             return;
-        if (xTaskCreatePinnedToCore(taskEntry, "alerts", TASK_STACK_WORDS, this, 1, nullptr, 1) != pdPASS)
+        if (xTaskCreatePinnedToCore(taskEntry, "alerts", TASK_STACK_BYTES, this, TASK_PRIORITY, nullptr, TASK_CORE) != pdPASS)
         {
             taskRunning.store(false);
             Logger::error(TAG, "Couldn't start the alert task (low memory)");
         }
-    }
-
-    void AlertDispatcher::taskEntry(void *arg)
-    {
-        static_cast<AlertDispatcher *>(arg)->run();
     }
 
     uint32_t AlertDispatcher::dispatch(
@@ -265,7 +168,7 @@ namespace SQM
 
         const uint32_t id = store(record);
         Logger::info(TAG, "%s: %s", alert.title.c_str(), alert.message.c_str());
-        if (httpMask != 0 && queue != nullptr && id != 0)
+        if (httpMask != 0 && wake != nullptr && id != 0)
         {
             JobChannels channels{
                 cfg.pushoverUserKey,
@@ -277,7 +180,8 @@ namespace SQM
                 cfg.webhookUrl,
                 cfg.webhookAuthHeader,
                 cfg.webhookInsecureTls};
-            queueHttp(id, httpMask, new (std::nothrow) Job{id, alert, std::move(channels), deviceName, httpMask});
+            queueHttp(
+                id, httpMask, new (std::nothrow) Job{id, alert, std::move(channels), deviceName, httpMask, Alerts::isCritical(alert.type)});
         }
         return id;
     }
@@ -323,130 +227,58 @@ namespace SQM
         return record.id;
     }
 
-    // HTTPS channels go to the delivery task; a full queue fails them at once.
-    // Spec 035: a job that couldn't be allocated fails the same way (sent
-    // again by the outbox).
+    // HTTPS channels go to the alert task. Spec 053: never waits (a few steps
+    // over the queue's fixed slots under a spinlock); when full, the oldest
+    // non-critical job is failed to make room ("Queue full"; the outbox, spec
+    // 030, sends it again). Spec 035: a job that couldn't be allocated fails
+    // the same way.
     void AlertDispatcher::queueHttp(uint32_t recordId, uint8_t channelMask, Job *job)
     {
-        if (job != nullptr && xQueueSend(queue, &job, 0) == pdTRUE)
+        if (job == nullptr)
         {
-            ensureTask();
+            Logger::warn(TAG, "Low memory - alert not queued");
+            for (size_t i = 1; i < ALERT_CHANNEL_COUNT; ++i)
+                if (channelMask & (1u << i))
+                    setStatus(recordId, static_cast<AlertChannel>(i), DeliveryStatus::Failed, "Low memory");
             return;
         }
-        Logger::warn(TAG, job != nullptr ? "Alert queue full - dropping notification" : "Low memory - alert not queued");
+        portENTER_CRITICAL(&jobsLock);
+        const auto pushed = jobs.push(job, job->critical);
+        portEXIT_CRITICAL(&jobsLock);
+        if (pushed.accepted)
+        {
+            ++queuedCount;
+            xSemaphoreGive(wake);
+            ensureTask();
+        }
+        if (pushed.dropped)
+            failJob(pushed.victim, "Queue full");
+    }
+
+    void AlertDispatcher::failJob(Job *job, const char *why)
+    {
+        Logger::warn(TAG, "Alert queue full - \"%s\" not sent by HTTPS", job->alert.title.c_str());
         for (size_t i = 1; i < ALERT_CHANNEL_COUNT; ++i)
-            if (channelMask & (1u << i))
-                setStatus(recordId, static_cast<AlertChannel>(i), DeliveryStatus::Failed, job != nullptr ? "Queue full" : "Low memory");
+            if (job->channelMask & (1u << i))
+                setStatus(job->recordId, static_cast<AlertChannel>(i), DeliveryStatus::Failed, why);
         delete job;
     }
 
-    void AlertDispatcher::run()
+    AlertDeliveryStats AlertDispatcher::deliveryStats() const
     {
-        for (;;)
-        {
-            Job *job = nullptr;
-            if (xQueueReceive(queue, &job, pdMS_TO_TICKS(TASK_IDLE_EXIT_MS)) == pdTRUE)
-            {
-                if (job != nullptr)
-                {
-                    delivering = true;
-                    deliver(*job);
-                    delete job;
-                    delivering = false;
-                }
-                continue;
-            }
-
-            // Idle: exit and give the stack back. If a job raced in after the
-            // timeout, take ownership again instead of exiting.
-            taskRunning.store(false);
-            bool expected = false;
-            if (uxQueueMessagesWaiting(queue) > 0 && taskRunning.compare_exchange_strong(expected, true))
-                continue;
-            vTaskDelete(nullptr);
-        }
-    }
-
-    bool AlertDispatcher::idle() const
-    {
-        return !delivering.load() && (queue == nullptr || uxQueueMessagesWaiting(queue) == 0);
-    }
-
-    void AlertDispatcher::deliver(const Job &job)
-    {
-        using Sender = bool (AlertDispatcher::*)(const Job &, std::string &);
-        const struct
-        {
-            AlertChannel channel;
-            Sender send;
-        } senders[] = {
-            {AlertChannel::Pushover, &AlertDispatcher::sendPushover},
-            {AlertChannel::Ntfy, &AlertDispatcher::sendNtfy},
-            {AlertChannel::Webhook, &AlertDispatcher::sendWebhook},
-        };
-
-        for (const auto &sender : senders)
-        {
-            if (!(job.channelMask & alertChannelBit(sender.channel)))
-                continue;
-
-            if (!NetState::online())
-            {
-                setStatus(job.recordId, sender.channel, DeliveryStatus::Skipped, "Not connected to a network");
-                continue;
-            }
-            if (networkBusy && networkBusy())
-            {
-                // TLS needs ~40 KB of heap; an OTA download already holds one session.
-                setStatus(job.recordId, sender.channel, DeliveryStatus::Skipped, "Firmware update in progress");
-                continue;
-            }
-
-            TlsLock::Guard tls(30000);
-            if (!tls.ok())
-            {
-                setStatus(job.recordId, sender.channel, DeliveryStatus::Skipped, "HTTPS busy with another request");
-                continue;
-            }
-
-            std::string detail;
-            bool ok = (this->*sender.send)(job, detail);
-            if (!ok && detail.rfind("HTTP ", 0) != 0)
-            {
-                // Connection-level failure (DNS, TCP, TLS memory): one retry.
-                vTaskDelay(pdMS_TO_TICKS(3000));
-                ok = (this->*sender.send)(job, detail);
-            }
-            setStatus(job.recordId, sender.channel, ok ? DeliveryStatus::Sent : DeliveryStatus::Failed, detail.c_str());
-            if (!ok)
-                Logger::warn(TAG, "%s delivery failed: %s", alertChannelName(sender.channel), detail.c_str());
-        }
-    }
-
-    bool AlertDispatcher::sendPushover(const Job &job, std::string &detail)
-    {
-        const Delivery::HttpRequest request = Delivery::pushoverRequest(
-            job.alert, {job.cfg.pushoverUserKey, job.cfg.pushoverAppToken, job.cfg.pushoverSound}, job.deviceName);
-        return httpPost(request, TlsTrust{false, PUSHOVER_ROOT_CA_PEM}, detail);
-    }
-
-    bool AlertDispatcher::sendNtfy(const Job &job, std::string &detail)
-    {
-        const Delivery::HttpRequest request =
-            Delivery::ntfyRequest(job.alert, {job.cfg.ntfyServer, job.cfg.ntfyTopic, job.cfg.ntfyToken}, job.deviceName);
-        const bool ntfySh = request.url.rfind("https://ntfy.sh/", 0) == 0;
-        return httpPost(request, TlsTrust{false, ntfySh ? NTFY_SH_ROOT_CA_PEM : ALERT_ROOT_CA_PEM}, detail);
-    }
-
-    bool AlertDispatcher::sendWebhook(const Job &job, std::string &detail)
-    {
-        Delivery::HttpRequest request;
-        request.url = job.cfg.webhookUrl;
-        request.contentType = "application/json";
-        request.body = Delivery::alertJson(job.alert, job.deviceName, epochNow());
-        if (!job.cfg.webhookAuthHeader.empty())
-            request.headers.push_back({"Authorization", job.cfg.webhookAuthHeader});
-        return httpPost(request, TlsTrust{job.cfg.webhookInsecureTls, ALERT_ROOT_CA_PEM}, detail);
+        AlertDeliveryStats stats;
+        stats.queued = queuedCount.load();
+        portENTER_CRITICAL(&jobsLock);
+        stats.dropped = jobs.dropped();
+        stats.memoryWaits = gate.memoryWaits();
+        stats.moveWaits = gate.moveWaits();
+        stats.gaveUp = gate.gaveUp();
+        portEXIT_CRITICAL(&jobsLock);
+        stats.stackLeast = stackLeast.load();
+        stats.lastFreeBefore = lastFreeBefore.load();
+        stats.lastLargestBefore = lastLargestBefore.load();
+        stats.lastFreeDuring = lastFreeDuring.load();
+        return stats;
     }
 
     void AlertDispatcher::setStatus(uint32_t recordId, AlertChannel channel, DeliveryStatus status, const char *detail)

@@ -60,7 +60,7 @@ Three figures have a healthy range:
 
 - **Step time** should stay far below 20 ms. The recording adds a few microseconds.
 - **Stack headroom** should stay above 2 KB for every task.
-- **Free heap** should stay above about 40 KB, so an alert's TLS session can open.
+- **Free heap** should stay above about 57 KB with a 45 KB free block, so an alert's TLS session can open; below that Pushover, ntfy and https webhooks wait until it is ([Alerts never hold up the roof](alerts.md#alerts-never-hold-up-the-roof)).
 
 In the [demo](../live-demo.md) the device-only values (heap, stacks, step time, loop pass, WiFi signal and reset reason) show as not available.
 

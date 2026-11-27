@@ -2,8 +2,8 @@
 
 #include "Config.h"
 #include "AlertEngine.h"
+#include "AlertSend.h"
 #include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
 #include <freertos/semphr.h>
 #include <array>
 #include <atomic>
@@ -81,16 +81,35 @@ namespace SQM
         void setDetail(size_t channel, const char *text);
     };
 
+    // Spec 053: how the HTTPS deliveries have gone since start (any task).
+    struct AlertDeliveryStats
+    {
+        uint32_t queued = 0;            // HTTPS deliveries handed to the alert task
+        uint32_t dropped = 0;           // pushed out of (or refused by) the full queue
+        uint32_t memoryWaits = 0;       // checks that found the heap below the TLS floor
+        uint32_t moveWaits = 0;         // checks that found the roof moving
+        uint32_t gaveUp = 0;            // deliveries that waited SEND_GIVE_UP_MS and were skipped
+        uint32_t stackLeast = 0;        // the least stack the alert task has had left (0: not run yet)
+        uint32_t lastFreeBefore = 0;    // the last TLS send: 8-bit heap free when it started
+        uint32_t lastLargestBefore = 0; // ... and its largest block
+        uint32_t lastFreeDuring = 0;    // free heap with the session open (after the request)
+    };
+
     // Delivers alerts. MQTT is published synchronously from the caller's
-    // (main loop) task because PubSubClient isn't thread-safe; the HTTPS
-    // channels go through a queue to a dedicated task so a slow TLS
-    // handshake never blocks the loop or the async web server.
+    // (main loop) task because PubSubClient isn't thread-safe; it is one
+    // write on the loop's own connection. The HTTPS channels go through a
+    // fixed queue (spec 053) to the alert task on core 0, away from the
+    // roof's control task (core 1): the main loop only queues (no wait, no
+    // allocation beyond the job), and the alert task waits for the roof to
+    // stop and for the heap a TLS session needs before it starts one.
     class AlertDispatcher
     {
     public:
         using BusyCheck = std::function<bool()>;
 
-        AlertDispatcher(MQTTClient *mqtt, BusyCheck networkBusy);
+        // `networkBusy`: an upload or update holds the network (HTTPS skipped
+        // for now). `roofMoving` (spec 053, any task): HTTPS waits while true.
+        AlertDispatcher(MQTTClient *mqtt, BusyCheck networkBusy, BusyCheck roofMoving);
         ~AlertDispatcher();
 
         AlertDispatcher(const AlertDispatcher &) = delete;
@@ -132,16 +151,25 @@ namespace SQM
         // Nothing queued and no delivery running (SQMeter's battery sleep waited
         // for this; RoofRoof has no battery or sleep). Any task.
         bool idle() const;
+        // Spec 053: the HTTPS deliveries' counters. Any task.
+        AlertDeliveryStats deliveryStats() const;
 
         static constexpr size_t MAX_RECORDS = 20;
-
-    private:
         static constexpr size_t QUEUE_LENGTH = 8;
-        static constexpr uint32_t TASK_STACK_WORDS = 8192;
+        // ESP-IDF stack sizes are bytes. Spec 053: a TLS handshake's depth
+        // (mbedTLS, the certificate checks) is the deepest the task goes; the
+        // least left is logged when it exits and counted in deliveryStats().
+        static constexpr uint32_t TASK_STACK_BYTES = 8192;
+        // Spec 053: the lowest priority above idle, on core 0 (the network's
+        // core): the roof's control task runs on core 1 at priority 5, so a
+        // handshake's seconds of arithmetic never run beside it.
+        static constexpr UBaseType_t TASK_PRIORITY = 1;
+        static constexpr BaseType_t TASK_CORE = 0;
         // The HTTPS task only exists while there's something to send: its
         // 8 KB stack is too much heap to hold for alerts that come hours apart.
         static constexpr uint32_t TASK_IDLE_EXIT_MS = 30000;
 
+    private:
         // Spec 035: what the HTTPS channels use, not every event's wording
         // (a queued job held a copy of all the alert settings).
         struct JobChannels
@@ -164,23 +192,42 @@ namespace SQM
             JobChannels cfg;
             std::string deviceName;
             uint8_t channelMask;
+            bool critical; // Alerts::isCritical: keeps its place in a full queue
         };
 
         static void taskEntry(void *arg);
         void run();
+        bool takeJob(Job *&job);
         void deliver(const Job &job);
+        void deliverOne(const Job &job, AlertChannel channel);
+        bool waitToSend(const Job &job, AlertChannel channel, bool tls);
+        bool mayStart(bool tls) const;
+        void sendLocked(const Job &job, AlertChannel channel, bool tls);
+        bool sendMeasured(const Job &job, AlertChannel channel, bool tls, std::string &detail);
+        void noteStack();
         uint32_t store(AlertRecord &record); // the record's new id, 0 if it couldn't be stored
         void queueHttp(uint32_t recordId, uint8_t channelMask, Job *job);
+        void failJob(Job *job, const char *why);
         void ensureTask();
         void setStatus(uint32_t recordId, AlertChannel channel, DeliveryStatus status, const char *detail);
 
-        bool sendPushover(const Job &job, std::string &detail);
-        bool sendNtfy(const Job &job, std::string &detail);
-        bool sendWebhook(const Job &job, std::string &detail);
+        // One channel's request (Pushover, ntfy or the webhook); `freeDuring`:
+        // the free heap with its session open.
+        static bool post(const Job &job, AlertChannel channel, std::string &detail, uint32_t &freeDuring);
 
         MQTTClient *mqtt;
         BusyCheck networkBusy;
-        QueueHandle_t queue = nullptr;
+        BusyCheck roofMoving;
+        // Spec 053: the HTTPS jobs, under jobsLock (a few steps over 8 slots).
+        Alerts::SendQueue<Job *, QUEUE_LENGTH> jobs;
+        mutable portMUX_TYPE jobsLock = portMUX_INITIALIZER_UNLOCKED;
+        SemaphoreHandle_t wake = nullptr; // given for each job queued
+        Alerts::SendGate gate;            // the alert task's only
+        std::atomic<uint32_t> queuedCount{0};
+        std::atomic<uint32_t> stackLeast{0};
+        std::atomic<uint32_t> lastFreeBefore{0};
+        std::atomic<uint32_t> lastLargestBefore{0};
+        std::atomic<uint32_t> lastFreeDuring{0};
         std::atomic<bool> taskRunning{false};
         std::atomic<bool> delivering{false};
         SemaphoreHandle_t mutex = nullptr;

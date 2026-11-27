@@ -15,16 +15,16 @@ RoofRoof can send push notifications itself - over Pushover, ntfy, a webhook, or
 Configure everything in **Settings → Alerts**: turn on **Send alerts** (the master switch for every channel), pick your channels, **Save**, then use **Send test** next to each channel.
 
 <!-- diagram: DIA-06
-sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertDispatcher.cpp#AlertDispatcher::deliver
+sources: lib/AlertLogic/src/AlertEngine.cpp lib/DeviceCore/src/DeviceAlerts.cpp#runAlerts src/WebServerAlerts.cpp#WebServer::processAlerts src/WebServerAlerts.cpp#WebServer::sendAlerts src/AlertDispatcher.cpp#AlertDispatcher::dispatch src/AlertSender.cpp#AlertDispatcher::deliverOne src/AlertSender.cpp#AlertDispatcher::waitToSend
 blocking: false
-fingerprint: 95fd7bc037bc726f
+fingerprint: 7b8bf605aad0905d
 -->
 <figure class="diagram" markdown>
 
 ```mermaid
 flowchart TB
     accTitle: Why an alert does or doesn't arrive
-    accDescr: Each second the device compares the roof and the imaging app with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on and not paused, sent to every enabled channel, with each channel's result recorded. A critical roof alert skips the pause and the master switch. Every alert that no channel took is queued and sent again with a growing gap until one does, a newer one of the same event replaces it or its condition has ended; a critical one is also kept across a restart.
+    accDescr: Each second the device compares the roof and the imaging app with what you were last told. A change can be tracked silently, held back for now, or dropped by its level; otherwise it is worded and, if alerts are on and not paused, sent to every enabled channel, with each channel's result recorded; the internet channels wait while the roof moves or memory is short. A critical roof alert skips the pause and the master switch. Every alert that no channel took is queued and sent again with a growing gap until one does, a newer one of the same event replaces it or its condition has ended; a critical one is also kept across a restart.
     CHANGE(["A condition changes<br/>the roof faults, its supply is low, a weather source<br/>is lost, the weather closes the roof or it closed;<br/>the roof needs a person;<br/>the roof is open in daylight, closed after daylight,<br/>or the daylight check can't run;<br/>N.I.N.A. can't be reached;<br/>a test box bypass comes into effect;<br/>an imaging app stops checking, comes back or disconnects"]) --> SILENT{"Ignored?"}
     SILENT -->|yes| TRACKED["<b>Tracked silently, never announced</b><br/>the event's level is Off, or no<br/>imaging app has used the device since boot"]
     SILENT -->|no| HELD{"Held back?"}
@@ -41,7 +41,10 @@ flowchart TB
     INEFFECT -->|"no: MQTT off,<br/>no network"| INACTIVE["<b>Skipped</b>, with the reason;<br/>nothing attempted"]
     INEFFECT -->|yes| MQTT["MQTT: published at once"]
     INEFFECT -->|yes| HTTP["Pushover, ntfy, webhook:<br/>queued, sent in the background"]
-    HTTP --> CANSEND{"Network free?"}
+    HTTP --> WAIT{"Roof still and<br/>memory for HTTPS?"}
+    WAIT -->|"no: waits, up to 10 min"| WAIT
+    WAIT -->|"still no after 10 min"| SKIPPED
+    WAIT -->|yes| CANSEND{"Network free?"}
     CANSEND -->|no| SKIPPED["<b>Skipped</b>, with the reason<br/>no network, a firmware update,<br/>or another HTTPS request"]
     CANSEND -->|yes| SENT["Sent, or Failed after one retry"]
     SKIPPED --> AGAIN
@@ -63,7 +66,7 @@ flowchart TB
     5. **Alerts paused** (by you, Home Assistant or a script, or because the imaging app disconnected in "Only while an imaging app is connected"): nothing is sent, except the critical roof alerts.
     6. While sending, with **Send alerts** on, the alert goes to every enabled channel: MQTT at once; Pushover, ntfy and the webhook in the background. With **Send alerts** off no channel is used.
     7. A channel that is switched on but not in effect (MQTT alerts with MQTT off, internet channels without a network: WiFi or Ethernet) is **skipped** with the reason, and nothing is attempted.
-    8. A background send is **skipped** when the device isn't on a network (WiFi or Ethernet), a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
+    8. A background send waits while the roof is moving, and while the device's memory is short of what an HTTPS connection needs ("Waiting for the roof to stop", "Waiting for memory" under **Recent alerts**); after 10 minutes of waiting it is **skipped** and sent again later. It is **skipped** when the device isn't on a network (WiFi or Ethernet), a firmware update is running or another HTTPS request holds the connection; otherwise it is **sent**, or **failed** after one retry on a connection error.
     9. Each channel's result appears under **Recent alerts**.
     10. **Critical roof alerts** (the mount didn't park, the roof didn't close, the roof needs a person) come from the [close on unsafe weather](close-on-unsafe.md#alerts), the roof's own state, or from an open or close that waited for the park and gave up, and skip steps 2 to 6: they are never paused, held or switched off, their level is Urgent or Wake me (at most Urgent on a test box), and custom wording keeps the reason. They go to every channel that is on. Every alert that no channel took, critical or not, is [sent again](#alerts-survive-an-outage).
 
@@ -209,6 +212,16 @@ An alert that no channel took (the access point restarting, no internet, Pushove
 The critical roof alerts waiting for a channel are also kept in the device's flash, one per event (written when queued and erased when delivered, a few writes per incident), so a restart or a power cut doesn't lose them. After the restart they are sent again, with "Sent before a restart at 2026-11-25 02:14." (the time it was queued, local) in the message (no time without a clock). A condition that is still there after the restart is also raised again from the device's fresh look at the roof.
 
 Several alerts at once (a weather change, the automatic close and the park in the same minute) go out one a second, the critical ones first, so the burst never needs the memory of several deliveries at once. While the device is short of memory (largest free block under 6 KB or under 24 KB free), the queue waits and the log says `Low memory (largest block ... B): alerts wait`; the alerts go out once memory is back.
+
+### Alerts never hold up the roof
+
+Pushover, ntfy and webhooks are sent by a background task of their own, on the processor core the roof's control doesn't use, at the lowest priority; the device's main loop only hands each alert over (it never waits for a send). An HTTPS connection needs about 25-40 KB of the device's memory, so the background task waits before it opens one:
+
+- **While the roof is moving**: the alert shows "Waiting for the roof to stop" and goes once the roof stops (MQTT, which needs no new connection, goes at once).
+- **While memory is short**: under 45 KB in one free block or under 57 KB free, it shows "Waiting for memory" and tries again after 2 s, then at doubling gaps up to 30 s.
+- After 10 minutes of waiting it is recorded as skipped ("Waited 10 min: sent again later") and the queue above sends it again.
+
+Up to 8 alerts wait for the background task; when more come, the oldest that isn't critical gives way ("Queue full") and is sent again later. The counts, and what the last HTTPS send found in memory, are at the end of [`GET /api/diag/heap`](../api/rest.md#get-apidiagheap).
 
 ### The imaging app
 
